@@ -53,6 +53,18 @@ func (m *MockMatchmakingService) SetGameCreatedCallback(callback matchmaking.Gam
 func (m *MockMatchmakingService) SetBotGameCallback(callback matchmaking.BotGameCallback) {
 }
 
+func (m *MockMatchmakingService) CreateBotGame(ctx context.Context, player string) (*models.GameSession, error) {
+	return &models.GameSession{
+		ID:          "bot-game-" + player,
+		Player1:     player,
+		Player2:     "bot_12345",
+		Board:       models.NewBoard(),
+		CurrentTurn: models.PlayerColorRed,
+		Status:      models.StatusInProgress,
+		StartTime:   time.Now(),
+	}, nil
+}
+
 // MockGameService for testing
 type MockGameService struct {
 	sessions map[string]*models.GameSession

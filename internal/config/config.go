@@ -82,9 +82,9 @@ func Load() (*Config, error) {
 	}
 
 	// Bind specific environment variables to config keys
-	viper.BindEnv("database.url", "DATABASE_URL")
-	viper.BindEnv("database.max_open_conns", "DATABASE_MAX_OPEN_CONNS")
-	viper.BindEnv("database.max_idle_conns", "DATABASE_MAX_IDLE_CONNS")
+	_ = viper.BindEnv("database.url", "DATABASE_URL")
+	_ = viper.BindEnv("database.max_open_conns", "DATABASE_MAX_OPEN_CONNS")
+	_ = viper.BindEnv("database.max_idle_conns", "DATABASE_MAX_IDLE_CONNS")
 	viper.BindEnv("database.conn_max_lifetime", "DATABASE_CONN_MAX_LIFETIME")
 	
 	viper.BindEnv("kafka.bootstrap_servers", "KAFKA_BOOTSTRAP_SERVERS")

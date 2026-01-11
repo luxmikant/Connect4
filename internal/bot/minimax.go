@@ -58,7 +58,9 @@ func (b *minimaxBot) GetBestMove(board *models.Board, player models.PlayerColor,
 
 		// Make move on a copy of the board
 		boardCopy := copyBoard(board)
-		boardCopy.MakeMove(col, player)
+		if err := boardCopy.MakeMove(col, player); err != nil {
+			continue // Skip invalid moves
+		}
 
 		// Evaluate using minimax
 		score := b.minimax(boardCopy, depth-1, math.MinInt32, math.MaxInt32, false, player)
@@ -145,7 +147,9 @@ func (b *minimaxBot) getBestMoveWithDeadline(board *models.Board, player models.
 
 		// Make move on a copy of the board
 		boardCopy := copyBoard(board)
-		boardCopy.MakeMove(col, player)
+		if err := boardCopy.MakeMove(col, player); err != nil {
+			continue // Skip invalid moves
+		}
 
 		// Evaluate using minimax
 		score := b.minimaxWithDeadline(boardCopy, depth-1, math.MinInt32, math.MaxInt32, false, player, deadline)
@@ -197,7 +201,9 @@ func (b *minimaxBot) minimaxWithDeadline(board *models.Board, depth int, alpha, 
 			}
 
 			boardCopy := copyBoard(board)
-			boardCopy.MakeMove(col, botPlayer)
+			if err := boardCopy.MakeMove(col, botPlayer); err != nil {
+				continue // Skip invalid moves
+			}
 
 			score := b.minimaxWithDeadline(boardCopy, depth-1, alpha, beta, false, botPlayer, deadline)
 			maxScore = max(maxScore, score)
@@ -221,7 +227,9 @@ func (b *minimaxBot) minimaxWithDeadline(board *models.Board, depth int, alpha, 
 			}
 
 			boardCopy := copyBoard(board)
-			boardCopy.MakeMove(col, opponent)
+			if err := boardCopy.MakeMove(col, opponent); err != nil {
+				continue // Skip invalid moves
+			}
 
 			score := b.minimaxWithDeadline(boardCopy, depth-1, alpha, beta, true, botPlayer, deadline)
 			minScore = min(minScore, score)
@@ -264,7 +272,9 @@ func (b *minimaxBot) minimax(board *models.Board, depth int, alpha, beta int, is
 			}
 
 			boardCopy := copyBoard(board)
-			boardCopy.MakeMove(col, botPlayer)
+			if err := boardCopy.MakeMove(col, botPlayer); err != nil {
+				continue // Skip invalid moves
+			}
 
 			score := b.minimax(boardCopy, depth-1, alpha, beta, false, botPlayer)
 			maxScore = max(maxScore, score)
@@ -284,7 +294,9 @@ func (b *minimaxBot) minimax(board *models.Board, depth int, alpha, beta int, is
 			}
 
 			boardCopy := copyBoard(board)
-			boardCopy.MakeMove(col, opponent)
+			if err := boardCopy.MakeMove(col, opponent); err != nil {
+				continue // Skip invalid moves
+			}
 
 			score := b.minimax(boardCopy, depth-1, alpha, beta, true, botPlayer)
 			minScore = min(minScore, score)
@@ -450,7 +462,9 @@ func (b *minimaxBot) FindWinningMove(board *models.Board, player models.PlayerCo
 		}
 
 		boardCopy := copyBoard(board)
-		boardCopy.MakeMove(col, player)
+		if err := boardCopy.MakeMove(col, player); err != nil {
+			continue // Skip invalid moves
+		}
 
 		winner := boardCopy.CheckWin()
 		if winner != nil && *winner == player {

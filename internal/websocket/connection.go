@@ -128,9 +128,13 @@ func (c *Connection) readPump(config ConnectionConfig) {
 	}()
 
 	c.conn.SetReadLimit(config.MaxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(config.PongWait))
+	if err := c.conn.SetReadDeadline(time.Now().Add(config.PongWait)); err != nil {
+		log.Printf("Error setting read deadline: %v", err)
+	}
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(config.PongWait))
+		if err := c.conn.SetReadDeadline(time.Now().Add(config.PongWait)); err != nil {
+			log.Printf("Error setting read deadline in pong handler: %v", err)
+		}
 		c.UpdateLastSeen()
 		return nil
 	})
@@ -170,10 +174,15 @@ func (c *Connection) writePump(config ConnectionConfig) {
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(config.WriteWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(config.WriteWait)); err != nil {
+				log.Printf("Error setting write deadline: %v", err)
+				return
+			}
 			if !ok {
 				// Hub closed the channel
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Printf("Error writing close message: %v", err)
+				}
 				return
 			}
 
