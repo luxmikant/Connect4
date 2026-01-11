@@ -12,7 +12,8 @@ class WebSocketService {
   private currentUserId: string | null = null;
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || import.meta.env.VITE_WS_URL || "ws://localhost:8080";
+    // baseUrl should be just the domain (e.g., wss://example.com), not include /ws path
+    this.baseUrl = baseUrl || import.meta.env.VITE_WS_URL || "wss://localhost:8080";
   }
 
   public connect(userId?: string) {
