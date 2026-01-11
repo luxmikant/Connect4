@@ -85,10 +85,10 @@ func Load() (*Config, error) {
 	_ = viper.BindEnv("database.url", "DATABASE_URL")
 	_ = viper.BindEnv("database.max_open_conns", "DATABASE_MAX_OPEN_CONNS")
 	_ = viper.BindEnv("database.max_idle_conns", "DATABASE_MAX_IDLE_CONNS")
-	viper.BindEnv("database.conn_max_lifetime", "DATABASE_CONN_MAX_LIFETIME")
+	_ = viper.BindEnv("database.conn_max_lifetime", "DATABASE_CONN_MAX_LIFETIME")
 
-	viper.BindEnv("kafka.bootstrap_servers", "KAFKA_BOOTSTRAP_SERVERS")
-	viper.BindEnv("kafka.api_key", "KAFKA_API_KEY")
+	_ = viper.BindEnv("kafka.bootstrap_servers", "KAFKA_BOOTSTRAP_SERVERS")
+	_ = viper.BindEnv("kafka.api_key", "KAFKA_API_KEY")
 	viper.BindEnv("kafka.api_secret", "KAFKA_API_SECRET")
 	viper.BindEnv("kafka.topic", "KAFKA_TOPIC")
 	viper.BindEnv("kafka.consumer_group", "KAFKA_CONSUMER_GROUP")

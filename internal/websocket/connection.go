@@ -190,7 +190,9 @@ func (c *Connection) writePump(config ConnectionConfig) {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			if _, err := w.Write(message); err != nil {
+				return
+			}
 
 			if err := w.Close(); err != nil {
 				return
@@ -201,7 +203,9 @@ func (c *Connection) writePump(config ConnectionConfig) {
 			// instead of concatenating them with newlines
 			n := len(c.send)
 			for i := 0; i < n; i++ {
-				c.conn.SetWriteDeadline(time.Now().Add(config.WriteWait))
+				if err := c.conn.SetWriteDeadline(time.Now().Add(config.WriteWait)); err != nil {
+					return
+				}
 				nextMsg := <-c.send
 				if err := c.conn.WriteMessage(websocket.TextMessage, nextMsg); err != nil {
 					return
@@ -209,7 +213,9 @@ func (c *Connection) writePump(config ConnectionConfig) {
 			}
 
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(config.WriteWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(config.WriteWait)); err != nil {
+				return
+			}
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
