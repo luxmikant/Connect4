@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://connect4-server.onrender.com/api/:path*"
+      "destination": "https://connect4-server-qgi9.onrender.com/api/:path*"
     }
   ],
   "headers": [
