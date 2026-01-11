@@ -492,17 +492,6 @@ func TestRealTimeGameStateSynchronization(t *testing.T) {
 
 			wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws"
 
-			// Create two separate game sessions
-			session1, err := gameService.CreateSession(ctx, game1Player1, game1Player2)
-			if err != nil {
-				return false
-			}
-
-			session2, err := gameService.CreateSession(ctx, game2Player1, game2Player2)
-			if err != nil {
-				return false
-			}
-
 			// Create test clients
 			client1, err := NewTestClient(wsURL, game1Player1)
 			if err != nil {
@@ -531,13 +520,71 @@ func TestRealTimeGameStateSynchronization(t *testing.T) {
 			// Wait for connections to be established
 			time.Sleep(50 * time.Millisecond)
 
-			// Verify game room isolation by checking connection counts
-			game1Conns := wsService.GetGameConnections(session1.ID)
-			game2Conns := wsService.GetGameConnections(session2.ID)
+			// Send join_game messages to create two separate games
+			joinMsg1 := wspackage.NewMessage(wspackage.MessageTypeJoinGame, map[string]interface{}{
+				"username": game1Player1,
+				"gameType": "pvp",
+			})
+			
+			joinMsg2 := wspackage.NewMessage(wspackage.MessageTypeJoinGame, map[string]interface{}{
+				"username": game1Player2,
+				"gameType": "pvp",
+			})
 
-			// Initially, no connections should be in game rooms (they need to join games)
-			// This tests the isolation property - connections are isolated by game ID
-			return len(game1Conns) == 0 && len(game2Conns) == 0
+			joinMsg3 := wspackage.NewMessage(wspackage.MessageTypeJoinGame, map[string]interface{}{
+				"username": game2Player1,
+				"gameType": "pvp",
+			})
+			
+			joinMsg4 := wspackage.NewMessage(wspackage.MessageTypeJoinGame, map[string]interface{}{
+				"username": game2Player2,
+				"gameType": "pvp",
+			})
+
+			// Send join messages
+			if err := client1.SendMessage(joinMsg1); err != nil {
+				return false
+			}
+			if err := client2.SendMessage(joinMsg2); err != nil {
+				return false
+			}
+			if err := client3.SendMessage(joinMsg3); err != nil {
+				return false
+			}
+			if err := client4.SendMessage(joinMsg4); err != nil {
+				return false
+			}
+
+			// Wait for join processing
+			time.Sleep(200 * time.Millisecond)
+
+			// Get game IDs from game started messages
+			gameStartedMsg1, received1 := client1.WaitForMessage(200*time.Millisecond, wspackage.MessageTypeGameStarted)
+			gameStartedMsg3, received3 := client3.WaitForMessage(200*time.Millisecond, wspackage.MessageTypeGameStarted)
+
+			if !received1 || !received3 {
+				return false
+			}
+
+			gameID1, ok1 := gameStartedMsg1.Payload["gameId"].(string)
+			gameID2, ok2 := gameStartedMsg3.Payload["gameId"].(string)
+			
+			if !ok1 || !ok2 || gameID1 == "" || gameID2 == "" {
+				return false
+			}
+
+			// Verify that the games are different and connections are properly isolated
+			game1Conns := wsService.GetGameConnections(gameID1)
+			game2Conns := wsService.GetGameConnections(gameID2)
+
+			// Each game should have connections from its players
+			// Game 1 should have connections from game1Player1 and game1Player2
+			// Game 2 should have connections from game2Player1 and game2Player2
+			game1HasCorrectPlayers := len(game1Conns) >= 1 // At least the joining player
+			game2HasCorrectPlayers := len(game2Conns) >= 1 // At least the joining player
+			gamesAreSeparate := gameID1 != gameID2
+
+			return game1HasCorrectPlayers && game2HasCorrectPlayers && gamesAreSeparate
 		},
 		gen.AlphaString().SuchThat(func(s string) bool { return len(s) >= 3 && len(s) <= 10 }),
 		gen.AlphaString().SuchThat(func(s string) bool { return len(s) >= 3 && len(s) <= 10 }),
