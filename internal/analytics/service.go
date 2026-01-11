@@ -1,0 +1,195 @@
+package analytics
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"gorm.io/gorm"
+
+	"connect4-multiplayer/internal/config"
+	"connect4-multiplayer/pkg/models"
+)
+
+// Service handles analytics event processing
+type Service struct {
+	consumer *kafka.Consumer
+	db       *gorm.DB
+}
+
+// NewService creates a new analytics service
+func NewService(cfg config.KafkaConfig, db *gorm.DB) (*Service, error) {
+	// Configure Kafka consumer
+	configMap := kafka.ConfigMap{
+		"bootstrap.servers": cfg.BootstrapServers,
+		"group.id":          cfg.ConsumerGroup,
+		"auto.offset.reset": "earliest",
+	}
+
+	// Add authentication if provided
+	if cfg.APIKey != "" && cfg.APISecret != "" {
+		configMap["security.protocol"] = "SASL_SSL"
+		configMap["sasl.mechanisms"] = "PLAIN"
+		configMap["sasl.username"] = cfg.APIKey
+		configMap["sasl.password"] = cfg.APISecret
+	}
+
+	consumer, err := kafka.NewConsumer(&configMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kafka consumer: %w", err)
+	}
+
+	// Subscribe to topic
+	if err := consumer.Subscribe(cfg.Topic, nil); err != nil {
+		return nil, fmt.Errorf("failed to subscribe to topic: %w", err)
+	}
+
+	return &Service{
+		consumer: consumer,
+		db:       db,
+	}, nil
+}
+
+// Start starts the analytics service
+func (s *Service) Start(ctx context.Context) error {
+	defer s.consumer.Close()
+
+	log.Println("Analytics service started, waiting for events...")
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Analytics service stopping...")
+			return nil
+		default:
+			// Poll for messages
+			msg, err := s.consumer.ReadMessage(100)
+			if err != nil {
+				if err.(kafka.Error).Code() == kafka.ErrTimedOut {
+					continue
+				}
+				log.Printf("Consumer error: %v", err)
+				continue
+			}
+
+			// Process the message
+			if err := s.processMessage(msg); err != nil {
+				log.Printf("Failed to process message: %v", err)
+			}
+		}
+	}
+}
+
+// processMessage processes a single Kafka message
+func (s *Service) processMessage(msg *kafka.Message) error {
+	var event models.GameEvent
+	if err := json.Unmarshal(msg.Value, &event); err != nil {
+		return fmt.Errorf("failed to unmarshal event: %w", err)
+	}
+
+	// Store the event in database
+	if err := s.db.Create(&event).Error; err != nil {
+		return fmt.Errorf("failed to store event: %w", err)
+	}
+
+	// Process event based on type
+	switch event.EventType {
+	case models.EventGameCompleted:
+		if err := s.processGameCompleted(&event); err != nil {
+			log.Printf("Failed to process game completed event: %v", err)
+		}
+	case models.EventPlayerJoined:
+		if err := s.processPlayerJoined(&event); err != nil {
+			log.Printf("Failed to process player joined event: %v", err)
+		}
+	}
+
+	log.Printf("Processed event: %s for game %s", event.EventType, event.GameID)
+	return nil
+}
+
+// processGameCompleted processes game completion events
+func (s *Service) processGameCompleted(event *models.GameEvent) error {
+	// Extract winner from metadata
+	winner, ok := event.Metadata["winner"].(string)
+	if !ok {
+		return fmt.Errorf("missing winner in game completed event")
+	}
+
+	// Update player statistics
+	if winner != "draw" {
+		// Update winner stats
+		if err := s.updatePlayerStats(winner, true); err != nil {
+			return fmt.Errorf("failed to update winner stats: %w", err)
+		}
+
+		// Update loser stats (get other player from metadata)
+		if loser, ok := event.Metadata["loser"].(string); ok {
+			if err := s.updatePlayerStats(loser, false); err != nil {
+				return fmt.Errorf("failed to update loser stats: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// processPlayerJoined processes player joined events
+func (s *Service) processPlayerJoined(event *models.GameEvent) error {
+	// Ensure player stats record exists
+	var stats models.PlayerStats
+	result := s.db.Where("username = ?", event.PlayerID).First(&stats)
+	
+	if result.Error == gorm.ErrRecordNotFound {
+		// Create new player stats record
+		stats = models.PlayerStats{
+			Username:    event.PlayerID,
+			GamesPlayed: 0,
+			GamesWon:    0,
+			WinRate:     0.0,
+		}
+		if err := s.db.Create(&stats).Error; err != nil {
+			return fmt.Errorf("failed to create player stats: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// updatePlayerStats updates player statistics
+func (s *Service) updatePlayerStats(username string, won bool) error {
+	var stats models.PlayerStats
+	result := s.db.Where("username = ?", username).First(&stats)
+	
+	if result.Error == gorm.ErrRecordNotFound {
+		// Create new stats record
+		stats = models.PlayerStats{
+			Username:    username,
+			GamesPlayed: 1,
+			GamesWon:    0,
+		}
+		if won {
+			stats.GamesWon = 1
+		}
+	} else if result.Error != nil {
+		return fmt.Errorf("failed to fetch player stats: %w", result.Error)
+	} else {
+		// Update existing stats
+		stats.GamesPlayed++
+		if won {
+			stats.GamesWon++
+		}
+	}
+
+	// Calculate win rate
+	stats.CalculateWinRate()
+
+	// Save updated stats
+	if err := s.db.Save(&stats).Error; err != nil {
+		return fmt.Errorf("failed to save player stats: %w", err)
+	}
+
+	return nil
+}

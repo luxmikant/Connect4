@@ -1,0 +1,30 @@
+# Development configuration
+environment: development
+
+server:
+  port: 8080
+  host: "0.0.0.0"
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+  read_timeout: 30
+  write_timeout: 30
+
+database:
+  url: "postgres://postgres:password@localhost:5432/connect4?sslmode=disable"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 300
+  ssl_mode: "disable"
+
+kafka:
+  bootstrap_servers: "localhost:9092"
+  api_key: ""
+  api_secret: ""
+  topic: "game-events"
+  consumer_group: "analytics-service"
+
+redis:
+  url: "localhost:6379"
+  password: ""
+  db: 0

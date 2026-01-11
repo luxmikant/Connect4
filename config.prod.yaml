@@ -1,0 +1,32 @@
+# Production configuration
+environment: production
+
+server:
+  port: 8080
+  host: "0.0.0.0"
+  cors_origins:
+    - "https://your-frontend-domain.com"
+  read_timeout: 30
+  write_timeout: 30
+
+database:
+  # Set via DATABASE_URL environment variable
+  url: ""
+  max_open_conns: 50
+  max_idle_conns: 10
+  conn_max_lifetime: 600
+  ssl_mode: "require"
+
+kafka:
+  # Set via environment variables
+  bootstrap_servers: ""
+  api_key: ""
+  api_secret: ""
+  topic: "game-events"
+  consumer_group: "analytics-service"
+
+redis:
+  # Set via REDIS_URL environment variable
+  url: ""
+  password: ""
+  db: 0
