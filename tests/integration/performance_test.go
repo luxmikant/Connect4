@@ -52,10 +52,10 @@ type PerformanceTestSuite struct {
 	
 	// Services
 	gameService        game.GameService
-	matchmakingService matchmaking.Service
+	matchmakingService matchmaking.MatchmakingService
 	statsService       stats.PlayerStatsService
 	websocketService   *wsService.Service
-	botService         bot.Service
+	botService         bot.BotPlayerService
 	
 	// HTTP Server
 	router *gin.Engine
@@ -298,13 +298,22 @@ func (suite *PerformanceTestSuite) setupDatabase() {
 // setupServices initializes services for performance testing
 func (suite *PerformanceTestSuite) setupServices() {
 	// Game service
-	suite.gameService = game.NewService(suite.repoManager, slog.Default())
+	suite.gameService = game.NewGameService(
+		suite.repoManager.GameSession,
+		suite.repoManager.PlayerStats,
+		suite.repoManager.Move,
+		suite.repoManager.GameEvent,
+		nil, // Use default config
+	)
 	
 	// Bot service
-	suite.botService = bot.NewService(slog.Default())
+	suite.botService = bot.NewBotPlayerService()
 	
 	// Stats service
-	suite.statsService = stats.NewService(suite.repoManager, slog.Default())
+	suite.statsService = stats.NewPlayerStatsService(
+		suite.repoManager.PlayerStats,
+		nil, // Use default config
+	)
 	
 	// Matchmaking service with optimized settings
 	matchmakingConfig := &matchmaking.ServiceConfig{
@@ -326,10 +335,10 @@ func (suite *PerformanceTestSuite) setupHTTPServer() {
 	suite.router = gin.New()
 	
 	// Add minimal middleware for performance
-	suite.router.Use(middleware.Recovery())
+	suite.router.Use(middleware.Recovery(nil))
 	
 	// Create handlers
-	gameHandler := handlers.NewGameHandler(suite.gameService, suite.botService, suite.statsService)
+	gameHandler := handlers.NewGameHandler(suite.gameService)
 	leaderboardHandler := handlers.NewLeaderboardHandler(suite.statsService)
 	
 	// Setup routes

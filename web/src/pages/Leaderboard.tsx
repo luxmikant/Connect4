@@ -27,13 +27,13 @@ export const Leaderboard: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {leaderboard.map((player) => (
-              <tr key={player.player_id} className="border-b border-gray-700">
-                <td className="px-4 py-2">{player.rank}</td>
+            {leaderboard.map((player, index) => (
+              <tr key={player.id} className="border-b border-gray-700">
+                <td className="px-4 py-2">{index + 1}</td>
                 <td className="px-4 py-2">{player.username}</td>
-                <td className="px-4 py-2">{player.games_played}</td>
-                <td className="px-4 py-2">{player.games_won}</td>
-                <td className="px-4 py-2">{(player.win_rate * 100).toFixed(2)}%</td>
+                <td className="px-4 py-2">{player.gamesPlayed}</td>
+                <td className="px-4 py-2">{player.gamesWon}</td>
+                <td className="px-4 py-2">{(player.winRate * 100).toFixed(2)}%</td>
               </tr>
             ))}
           </tbody>

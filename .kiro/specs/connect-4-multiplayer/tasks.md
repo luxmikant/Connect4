@@ -217,7 +217,8 @@ This implementation plan breaks down the Connect 4 multiplayer system into discr
   - [x] 12.2 Implement game board component
     - Create 7x6 grid with click handlers
     - Add disc drop animations
-    - Implement real-time move updates
+    - Implement real-t
+    ime move updates
     - _Requirements: 8.2, 8.3, 8.4_
 
   - [x] 12.3 Write property test for UI interactions

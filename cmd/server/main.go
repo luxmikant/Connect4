@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"connect4-multiplayer/internal/analytics"
 	"connect4-multiplayer/internal/api/handlers"
 	"connect4-multiplayer/internal/api/routes"
 	"connect4-multiplayer/internal/config"
@@ -48,13 +49,20 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-	// Initialize services
+	// Initialize Kafka analytics producer (Requirement 9)
+	analyticsProducer := analytics.NewProducer(cfg.Kafka)
+	log.Printf("Analytics producer initialized for Kafka topic: %s", cfg.Kafka.Topic)
+
+	// Initialize services with analytics producer
+	serviceConfig := game.DefaultServiceConfig()
+	serviceConfig.AnalyticsProducer = analyticsProducer
+	
 	gameService := game.NewGameService(
 		repoManager.GameSession,
 		repoManager.PlayerStats,
 		repoManager.Move,
 		repoManager.GameEvent,
-		game.DefaultServiceConfig(),
+		serviceConfig,
 	)
 
 	// Initialize matchmaking service
@@ -116,6 +124,11 @@ func main() {
 	// Stop WebSocket service
 	if err := wsService.Stop(); err != nil {
 		log.Printf("Error stopping WebSocket service: %v", err)
+	}
+
+	// Close analytics producer
+	if err := analyticsProducer.Close(); err != nil {
+		log.Printf("Error closing analytics producer: %v", err)
 	}
 
 	if err := srv.Shutdown(ctx); err != nil {

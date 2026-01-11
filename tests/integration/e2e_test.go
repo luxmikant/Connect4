@@ -52,11 +52,11 @@ type E2ETestSuite struct {
 	
 	// Services
 	gameService        game.GameService
-	matchmakingService matchmaking.Service
+	matchmakingService matchmaking.MatchmakingService
 	statsService       stats.PlayerStatsService
 	analyticsService   *analytics.Service
 	websocketService   *wsService.Service
-	botService         bot.Service
+	botService         bot.BotPlayerService
 	
 	// HTTP Server
 	router *gin.Engine
@@ -158,13 +158,22 @@ func (suite *E2ETestSuite) setupDatabase() {
 // setupServices initializes all application services
 func (suite *E2ETestSuite) setupServices() {
 	// Game service
-	suite.gameService = game.NewService(suite.repoManager, slog.Default())
+	suite.gameService = game.NewGameService(
+		suite.repoManager.GameSession,
+		suite.repoManager.PlayerStats,
+		suite.repoManager.Move,
+		suite.repoManager.GameEvent,
+		nil, // Use default config
+	)
 	
 	// Bot service
-	suite.botService = bot.NewService(slog.Default())
+	suite.botService = bot.NewBotPlayerService()
 	
 	// Stats service
-	suite.statsService = stats.NewService(suite.repoManager, slog.Default())
+	suite.statsService = stats.NewPlayerStatsService(
+		suite.repoManager.PlayerStats,
+		nil, // Use default config
+	)
 	
 	// Matchmaking service
 	matchmakingConfig := &matchmaking.ServiceConfig{
@@ -175,17 +184,11 @@ func (suite *E2ETestSuite) setupServices() {
 	suite.matchmakingService = matchmaking.NewMatchmakingService(suite.gameService, matchmakingConfig)
 	
 	// Analytics service (with Confluent Cloud Kafka)
-	analyticsConfig := &analytics.ServiceConfig{
-		KafkaConfig: analytics.KafkaConfig{
-			BootstrapServers: suite.config.Kafka.BootstrapServers,
-			APIKey:          suite.config.Kafka.APIKey,
-			APISecret:       suite.config.Kafka.APISecret,
-			Topic:           suite.config.Kafka.Topic,
-			ConsumerGroup:   suite.config.Kafka.ConsumerGroup,
-		},
-		Logger: slog.Default(),
-	}
-	suite.analyticsService = analytics.NewService(suite.repoManager, analyticsConfig)
+	var analyticsService *analytics.Service
+	var err error
+	analyticsService, err = analytics.NewService(suite.config.Kafka, suite.db)
+	require.NoError(suite.T(), err, "Failed to create analytics service")
+	suite.analyticsService = analyticsService
 	
 	// WebSocket service
 	suite.websocketService = wsService.NewService(suite.gameService, suite.matchmakingService)
@@ -199,13 +202,13 @@ func (suite *E2ETestSuite) setupHTTPServer() {
 	suite.router = gin.New()
 	
 	// Add middleware
-	suite.router.Use(middleware.CORS())
-	suite.router.Use(middleware.Logging())
-	suite.router.Use(middleware.Recovery())
-	suite.router.Use(middleware.Validation())
+	suite.router.Use(middleware.CORS(nil))
+	suite.router.Use(middleware.Logging(nil))
+	suite.router.Use(middleware.Recovery(nil))
+	suite.router.Use(middleware.Validation(nil))
 	
 	// Create handlers
-	gameHandler := handlers.NewGameHandler(suite.gameService, suite.botService, suite.statsService)
+	gameHandler := handlers.NewGameHandler(suite.gameService)
 	leaderboardHandler := handlers.NewLeaderboardHandler(suite.statsService)
 	
 	// Setup routes

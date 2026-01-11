@@ -83,7 +83,7 @@ func (gs *GameSession) GetPlayerColor(username string) PlayerColor {
 
 // Board represents the Connect 4 game board
 type Board struct {
-	Grid   [6][7]PlayerColor `json:"grid"`
+	Grid   [6][7]PlayerColor `json:"cells"`
 	Height [7]int           `json:"height"`
 }
 

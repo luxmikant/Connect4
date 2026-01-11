@@ -12,6 +12,7 @@ const (
 	// Client to Server messages
 	MessageTypeJoinQueue   MessageType = "join_queue"    // New: Join matchmaking queue
 	MessageTypeLeaveQueue  MessageType = "leave_queue"   // New: Leave matchmaking queue
+	MessageTypePlayWithBot MessageType = "play_with_bot" // New: Play directly with bot
 	MessageTypeJoinGame    MessageType = "join_game"
 	MessageTypeMakeMove    MessageType = "make_move"
 	MessageTypeReconnect   MessageType = "reconnect"
@@ -19,17 +20,17 @@ const (
 	MessageTypePing        MessageType = "ping"
 
 	// Server to Client messages
-	MessageTypeQueueJoined    MessageType = "queue_joined"    // New: Joined matchmaking queue
-	MessageTypeQueueStatus    MessageType = "queue_status"    // New: Queue status update
-	MessageTypeMatchFound     MessageType = "match_found"     // New: Match found notification
-	MessageTypeGameStarted    MessageType = "game_started"
-	MessageTypeMoveMade       MessageType = "move_made"
-	MessageTypeGameEnded      MessageType = "game_ended"
-	MessageTypeGameState      MessageType = "game_state"
-	MessageTypePlayerJoined   MessageType = "player_joined"
-	MessageTypePlayerLeft     MessageType = "player_left"
-	MessageTypeError          MessageType = "error"
-	MessageTypePong           MessageType = "pong"
+	MessageTypeQueueJoined  MessageType = "queue_joined" // New: Joined matchmaking queue
+	MessageTypeQueueStatus  MessageType = "queue_status" // New: Queue status update
+	MessageTypeMatchFound   MessageType = "match_found"  // New: Match found notification
+	MessageTypeGameStarted  MessageType = "game_started"
+	MessageTypeMoveMade     MessageType = "move_made"
+	MessageTypeGameEnded    MessageType = "game_ended"
+	MessageTypeGameState    MessageType = "game_state"
+	MessageTypePlayerJoined MessageType = "player_joined"
+	MessageTypePlayerLeft   MessageType = "player_left"
+	MessageTypeError        MessageType = "error"
+	MessageTypePong         MessageType = "pong"
 )
 
 // Message represents a WebSocket message
@@ -232,13 +233,14 @@ func CreateReconnectMessage(gameID, username string) *Message {
 }
 
 // CreateGameStartedMessage creates a game started message
-func CreateGameStartedMessage(gameID, opponent, yourColor, currentTurn string, isBot bool) *Message {
+func CreateGameStartedMessage(gameID, opponent, yourColor, currentTurn string, isBot bool, board interface{}) *Message {
 	return NewMessage(MessageTypeGameStarted, map[string]interface{}{
 		"gameId":      gameID,
 		"opponent":    opponent,
 		"yourColor":   yourColor,
 		"currentTurn": currentTurn,
 		"isBot":       isBot,
+		"board":       board,
 	})
 }
 

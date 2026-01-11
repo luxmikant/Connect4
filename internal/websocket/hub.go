@@ -54,7 +54,7 @@ type MessageHandler interface {
 // NewHub creates a new WebSocket hub
 func NewHub(messageHandler MessageHandler, config ConnectionConfig) *Hub {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &Hub{
 		connections:    make(map[string]*Connection),
 		gameRooms:      make(map[string]map[string]*Connection),
@@ -117,11 +117,38 @@ func (h *Hub) GetConnection(userID string) (*Connection, bool) {
 	return conn, exists
 }
 
+// UpdateConnectionUserID updates a connection's user ID in the hub
+// This should be called when the user authenticates with a username after connecting
+func (h *Hub) UpdateConnectionUserID(conn *Connection, oldUserID, newUserID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// Remove from old mapping if exists
+	if oldUserID != "" {
+		if existingConn, exists := h.connections[oldUserID]; exists && existingConn == conn {
+			delete(h.connections, oldUserID)
+		}
+	}
+
+	// Check if new userID already has a connection
+	if existingConn, exists := h.connections[newUserID]; exists && existingConn != conn {
+		// Close existing connection for this user
+		existingConn.Close()
+		h.removeFromGameRoom(existingConn)
+	}
+
+	// Register under new userID
+	h.connections[newUserID] = conn
+
+	log.Printf("Connection userID updated: %s -> %s, total_connections=%d",
+		oldUserID, newUserID, len(h.connections))
+}
+
 // GetGameConnections returns all connections for a specific game
 func (h *Hub) GetGameConnections(gameID string) map[string]*Connection {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	gameConns := make(map[string]*Connection)
 	if room, exists := h.gameRooms[gameID]; exists {
 		for userID, conn := range room {
@@ -135,7 +162,7 @@ func (h *Hub) GetGameConnections(gameID string) map[string]*Connection {
 func (h *Hub) GetActiveGames() []string {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	games := make([]string, 0, len(h.gameRooms))
 	for gameID := range h.gameRooms {
 		games = append(games, gameID)
@@ -153,7 +180,7 @@ func (h *Hub) GetConnectionCount() int {
 // Shutdown gracefully shuts down the hub
 func (h *Hub) Shutdown() {
 	h.cancel()
-	
+
 	// Close all connections
 	h.mu.Lock()
 	for _, conn := range h.connections {
@@ -185,7 +212,7 @@ func (h *Hub) registerConnection(conn *Connection) {
 		h.addToGameRoom(conn)
 	}
 
-	log.Printf("Connection registered: user=%s, game=%s, total_connections=%d", 
+	log.Printf("Connection registered: user=%s, game=%s, total_connections=%d",
 		userID, gameID, len(h.connections))
 }
 
@@ -195,7 +222,7 @@ func (h *Hub) unregisterConnection(conn *Connection) {
 	defer h.mu.Unlock()
 
 	userID := conn.GetUserID()
-	
+
 	// Remove from connections map
 	if _, exists := h.connections[userID]; exists {
 		delete(h.connections, userID)
@@ -205,7 +232,7 @@ func (h *Hub) unregisterConnection(conn *Connection) {
 	// Remove from game room
 	h.removeFromGameRoom(conn)
 
-	log.Printf("Connection unregistered: user=%s, total_connections=%d", 
+	log.Printf("Connection unregistered: user=%s, total_connections=%d",
 		userID, len(h.connections))
 }
 
@@ -223,8 +250,8 @@ func (h *Hub) addToGameRoom(conn *Connection) {
 	}
 
 	h.gameRooms[gameID][userID] = conn
-	
-	log.Printf("Added to game room: user=%s, game=%s, room_size=%d", 
+
+	log.Printf("Added to game room: user=%s, game=%s, room_size=%d",
 		userID, gameID, len(h.gameRooms[gameID]))
 }
 
@@ -239,13 +266,13 @@ func (h *Hub) removeFromGameRoom(conn *Connection) {
 
 	if room, exists := h.gameRooms[gameID]; exists {
 		delete(room, userID)
-		
+
 		// Remove empty game rooms
 		if len(room) == 0 {
 			delete(h.gameRooms, gameID)
 			log.Printf("Removed empty game room: game=%s", gameID)
 		} else {
-			log.Printf("Removed from game room: user=%s, game=%s, room_size=%d", 
+			log.Printf("Removed from game room: user=%s, game=%s, room_size=%d",
 				userID, gameID, len(room))
 		}
 	}
@@ -274,7 +301,7 @@ func (h *Hub) broadcastToGame(msg *BroadcastMessage) {
 		conn.SendMessage(msg.Message)
 	}
 
-	log.Printf("Broadcast to game: game=%s, recipients=%d, excluded=%s", 
+	log.Printf("Broadcast to game: game=%s, recipients=%d, excluded=%s",
 		msg.GameID, len(connections), msg.Exclude)
 }
 
@@ -283,7 +310,7 @@ func (h *Hub) handleMessage(conn *Connection, message *Message) {
 	if h.messageHandler != nil {
 		if err := h.messageHandler.HandleMessage(h.ctx, conn, message); err != nil {
 			log.Printf("Error handling message: %v", err)
-			
+
 			// Send error response to client
 			errorMsg := &Message{
 				Type: MessageTypeError,
@@ -291,7 +318,7 @@ func (h *Hub) handleMessage(conn *Connection, message *Message) {
 					"error": err.Error(),
 				},
 			}
-			
+
 			if data, err := json.Marshal(errorMsg); err == nil {
 				conn.SendMessage(data)
 			}
@@ -335,7 +362,7 @@ func (h *Hub) cleanupStaleConnections() {
 			h.removeFromGameRoom(conn)
 			conn.Close()
 		}
-		
+
 		if len(staleConnections) > 0 {
 			log.Printf("Cleaned up %d stale connections", len(staleConnections))
 		}

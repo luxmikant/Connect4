@@ -2,6 +2,15 @@
 
 A real-time multiplayer Connect 4 game system built with Go backend, React frontend, and Kafka-based analytics pipeline.
 
+## ✨ Key Highlights
+
+🎮 **Real-Time Multiplayer** - Play live games via WebSocket with instant move synchronization  
+🤖 **Smart AI Bot** - Challenge an intelligent bot using minimax algorithm with alpha-beta pruning  
+⚡ **Auto Matchmaking** - 10-second queue with automatic bot fallback  
+📊 **Kafka Analytics** - Real-time game metrics and player behavior tracking via Apache Kafka  
+🏆 **Live Leaderboard** - Track rankings, win rates, and player statistics  
+🔄 **Session Persistence** - Automatic reconnection with 30-second grace period  
+
 ## Features
 
 - **Real-time multiplayer gameplay** via WebSocket connections
@@ -9,7 +18,7 @@ A real-time multiplayer Connect 4 game system built with Go backend, React front
 - **Automatic matchmaking** with 10-second timeout fallback to bot games
 - **Player reconnection support** with 30-second session persistence
 - **Live leaderboard** with player statistics and rankings
-- **Analytics pipeline** for game metrics and player behavior tracking
+- **Kafka-powered analytics** - Tracks gameplay metrics, player behavior, game duration, and peak hours
 
 ## Architecture
 
@@ -85,65 +94,53 @@ The server will start at `http://localhost:8080` with hot reload enabled.
 
 > 📋 **Need help with credentials?** See [CREDENTIALS_SETUP.md](CREDENTIALS_SETUP.md) for a quick setup guide or [docs/cloud-setup-guide.md](docs/cloud-setup-guide.md) for detailed instructions.
 
-### Using Docker (Full Stack)
 
-```bash
-# Build and start all services
-make docker-build
-make docker-up
 
-# View logs
-make docker-logs
-
-# Stop services
-make docker-down
+# Analytics
+make run-analytics   # Start Kafka analytics consumer
 ```
 
-## Development
+## 📊 Kafka Analytics
 
-### Available Commands
+The system includes **real-time analytics** powered by Apache Kafka. Game events are published to Kafka and consumed by an analytics service that tracks:
+
+- **Gameplay Metrics**: Average game duration, games per hour/day, min/max duration
+- **Player Metrics**: Unique players per hour, active games, player win rates
+- **Event Tracking**: All game events (started, moves, completed) stored for analysis
+
+### Running Analytics Service
 
 ```bash
-# Development
-make dev              # Start with hot reload
-make run-server       # Run server directly
-make run-analytics    # Run analytics service
+# Build analytics consumer
+go build -o analytics.exe ./cmd/analytics
 
-# Credential Setup
-make setup-credentials # Interactive credential setup
-make create-env       # Create .env from template
-make validate-env     # Validate environment config
-make test-db          # Test database connection
-make test-kafka       # Test Kafka connection
-
-# Building
-make build           # Build all binaries
-make build-prod      # Build for production
-
-# Testing
-make test            # Run all tests
-make test-coverage   # Run tests with coverage
-make test-property   # Run property-based tests
-
-# Code Quality
-make lint            # Run linter
-make fmt             # Format code
-make vet             # Run go vet
-
-# Database
-make migrate         # Run migrations
-make migrate-up      # Run migrations (with binary)
-make migrate-down    # Rollback migrations
-
-# Documentation
-make docs            # Generate API docs
-make docs-serve      # Serve documentation
-
-# Docker
-make docker-build    # Build Docker images
-make docker-up       # Start with Docker
-make docker-down     # Stop Docker services
+# Run analytics service
+./analytics.exe
 ```
+
+### Viewing Analytics Data
+
+```sql
+-- View latest analytics snapshot
+SELECT 
+    timestamp,
+    games_completed_hour,
+    games_completed_day,
+    avg_game_duration_sec,
+    unique_players_hour
+FROM analytics_snapshots
+ORDER BY timestamp DESC
+LIMIT 10;
+
+-- Most frequent winners
+SELECT username, games_won, win_rate 
+FROM player_stats 
+ORDER BY games_won DESC 
+LIMIT 10;
+```
+
+📖 **For detailed analytics guide, see [docs/kafka-analytics-guide.md](docs/kafka-analytics-guide.md)**
+
 
 ### Project Structure
 

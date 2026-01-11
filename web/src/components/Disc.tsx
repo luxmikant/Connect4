@@ -3,12 +3,18 @@ import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
 
 interface DiscProps {
-  color: number; // 0 = empty, 1 = red, 2 = yellow
+  color: number | string; // 0 = empty, 1 or "red" = red, 2 or "yellow" = yellow
   rowIndex: number;
 }
 
 export const Disc: React.FC<DiscProps> = ({ color, rowIndex }) => {
-  if (color === 0) return null;
+  // Handle both numeric and string color values
+  if (color === 0 || color === "" || color === null || color === undefined) return null;
+
+  const isRed = color === 1 || color === "red";
+  const isYellow = color === 2 || color === "yellow";
+
+  if (!isRed && !isYellow) return null;
 
   return (
     <motion.div
@@ -22,7 +28,7 @@ export const Disc: React.FC<DiscProps> = ({ color, rowIndex }) => {
       }}
       className={clsx(
         "w-full h-full rounded-full shadow-inner",
-        color === 1 ? "bg-red-500" : "bg-yellow-400"
+        isRed ? "bg-red-500" : "bg-yellow-400"
       )}
     />
   );

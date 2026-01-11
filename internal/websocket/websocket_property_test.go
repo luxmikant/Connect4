@@ -20,9 +20,10 @@ import (
 	"github.com/leanovate/gopter/prop"
 
 	wspackage "connect4-multiplayer/internal/websocket"
-	"connect4-multiplayer/internal/matchmaking"
 	"connect4-multiplayer/pkg/models"
 )
+
+// MockMatchmakingService and MockGameService are defined in mocks_test.go
 
 // TestClient represents a WebSocket test client
 type TestClient struct {

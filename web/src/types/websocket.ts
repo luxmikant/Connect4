@@ -7,6 +7,7 @@ export const MessageType = {
   Reconnect: "reconnect",
   LeaveGame: "leave_game",
   Ping: "ping",
+  PlayWithBot: "play_with_bot",
   // Server to Client
   QueueJoined: "queue_joined",
   QueueStatus: "queue_status",
@@ -29,6 +30,13 @@ export interface WebSocketMessage {
   timestamp: string;
 }
 
+export interface QueueStatus {
+  inQueue: boolean;
+  position: number;
+  waitTime: string;
+  timeRemaining: string;
+}
+
 export interface GameState {
   id: string;
   board: number[][];
@@ -38,4 +46,5 @@ export interface GameState {
     [key: number]: string; // playerId -> name
   };
   winner?: number;
+  isBot?: boolean;
 }

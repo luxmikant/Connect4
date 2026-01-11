@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 
 export interface PlayerStat {
-  rank: number;
-  player_id: string;
+  id: string;
   username: string;
-  games_played: number;
-  games_won: number;
-  win_rate: number;
+  gamesPlayed: number;
+  gamesWon: number;
+  winRate: number;
+  avgGameTime: number;
+  lastPlayed: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const useLeaderboard = () => {

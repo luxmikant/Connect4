@@ -11,6 +11,16 @@ import (
 	"connect4-multiplayer/pkg/models"
 )
 
+// AnalyticsProducer interface for sending analytics events to Kafka
+type AnalyticsProducer interface {
+	SendGameStarted(ctx context.Context, gameID, player1, player2 string) error
+	SendGameCompleted(ctx context.Context, gameID, winner, loser string, duration time.Duration) error
+	SendMoveMade(ctx context.Context, gameID, playerID string, column, row int, moveNumber int) error
+	SendPlayerJoined(ctx context.Context, gameID, playerID string) error
+	SendPlayerDisconnected(ctx context.Context, gameID, playerID string) error
+	SendPlayerReconnected(ctx context.Context, gameID, playerID string) error
+}
+
 // GameService defines the interface for game session management
 type GameService interface {
 	// Session lifecycle management
@@ -61,6 +71,9 @@ type gameService struct {
 	moveRepo  repositories.MoveRepository
 	eventRepo repositories.GameEventRepository
 	
+	// Analytics producer for Kafka events (Requirement 9, 10)
+	analyticsProducer AnalyticsProducer
+	
 	// In-memory cache for active sessions
 	sessionCache map[string]*cachedSession
 	cacheMutex   sync.RWMutex
@@ -91,6 +104,7 @@ type ServiceConfig struct {
 	SessionTimeout    time.Duration
 	DisconnectTimeout time.Duration
 	Logger            *slog.Logger
+	AnalyticsProducer AnalyticsProducer // Optional: Kafka producer for analytics
 }
 
 // DefaultServiceConfig returns default service configuration
@@ -99,6 +113,7 @@ func DefaultServiceConfig() *ServiceConfig {
 		SessionTimeout:    30 * time.Minute,
 		DisconnectTimeout: 30 * time.Second, // Requirement 4: 30 second timeout
 		Logger:            slog.Default(),
+		AnalyticsProducer: nil, // Optional, can be set later
 	}
 }
 
@@ -119,6 +134,7 @@ func NewGameService(
 		statsRepo:           statsRepo,
 		moveRepo:            moveRepo,
 		eventRepo:           eventRepo,
+		analyticsProducer:   config.AnalyticsProducer,
 		sessionCache:        make(map[string]*cachedSession),
 		disconnectedPlayers: make(map[string]map[string]time.Time),
 		sessionTimeout:      config.SessionTimeout,
@@ -162,13 +178,25 @@ func (s *gameService) CreateSession(ctx context.Context, player1, player2 string
 		"player2", player2,
 	)
 	
-	// Create game started event
+	// Create game started event in database
 	event := models.NewGameStartedEvent(session.ID, player1, player2)
 	if err := s.eventRepo.Create(ctx, event); err != nil {
 		s.logger.Warn("failed to create game started event",
 			"gameID", session.ID,
 			"error", err,
 		)
+	}
+	
+	// Send analytics event to Kafka (Requirement 9.1)
+	if s.analyticsProducer != nil {
+		go func() {
+			if err := s.analyticsProducer.SendGameStarted(context.Background(), session.ID, player1, player2); err != nil {
+				s.logger.Warn("failed to send game started analytics event",
+					"gameID", session.ID,
+					"error", err,
+				)
+			}
+		}()
 	}
 	
 	return session, nil
@@ -341,6 +369,19 @@ func (s *gameService) CompleteGame(ctx context.Context, gameID string, winner *m
 			"gameID", gameID,
 			"error", err,
 		)
+	}
+	
+	// Send analytics event to Kafka (Requirement 9.3)
+	if s.analyticsProducer != nil {
+		go func() {
+			duration := time.Duration(gameDuration) * time.Second
+			if err := s.analyticsProducer.SendGameCompleted(context.Background(), gameID, winnerUsername, loserUsername, duration); err != nil {
+				s.logger.Warn("failed to send game completed analytics event",
+					"gameID", gameID,
+					"error", err,
+				)
+			}
+		}()
 	}
 	
 	// Invalidate cache
@@ -618,7 +659,7 @@ func (s *gameService) MarkPlayerDisconnected(ctx context.Context, gameID string,
 	s.disconnectedPlayers[gameID][username] = time.Now()
 	s.disconnectMutex.Unlock()
 	
-	// Create player left event
+	// Create player left event in database
 	event := &models.GameEvent{
 		EventType: models.EventPlayerLeft,
 		GameID:    gameID,
@@ -634,6 +675,19 @@ func (s *gameService) MarkPlayerDisconnected(ctx context.Context, gameID string,
 			"player", username,
 			"error", err,
 		)
+	}
+	
+	// Send analytics event to Kafka (Requirement 9.4)
+	if s.analyticsProducer != nil {
+		go func() {
+			if err := s.analyticsProducer.SendPlayerDisconnected(context.Background(), gameID, username); err != nil {
+				s.logger.Warn("failed to send player disconnected analytics event",
+					"gameID", gameID,
+					"player", username,
+					"error", err,
+				)
+			}
+		}()
 	}
 	
 	s.logger.Info("player disconnected",
@@ -672,7 +726,7 @@ func (s *gameService) MarkPlayerReconnected(ctx context.Context, gameID string, 
 	}
 	s.disconnectMutex.Unlock()
 	
-	// Create player reconnected event
+	// Create player reconnected event in database
 	event := &models.GameEvent{
 		EventType: models.EventPlayerReconnected,
 		GameID:    gameID,
@@ -686,6 +740,19 @@ func (s *gameService) MarkPlayerReconnected(ctx context.Context, gameID string, 
 			"player", username,
 			"error", err,
 		)
+	}
+	
+	// Send analytics event to Kafka (Requirement 9.4)
+	if s.analyticsProducer != nil {
+		go func() {
+			if err := s.analyticsProducer.SendPlayerReconnected(context.Background(), gameID, username); err != nil {
+				s.logger.Warn("failed to send player reconnected analytics event",
+					"gameID", gameID,
+					"player", username,
+					"error", err,
+				)
+			}
+		}()
 	}
 	
 	s.logger.Info("player reconnected",

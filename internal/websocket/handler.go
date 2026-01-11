@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"connect4-multiplayer/internal/bot"
 	"connect4-multiplayer/internal/game"
 	"connect4-multiplayer/internal/matchmaking"
 	"connect4-multiplayer/pkg/models"
@@ -16,9 +18,10 @@ import (
 
 // GameMessageHandler handles WebSocket messages related to game operations
 type GameMessageHandler struct {
-	gameService       game.GameService
+	gameService        game.GameService
 	matchmakingService matchmaking.MatchmakingService
-	hub               *Hub
+	hub                *Hub
+	botService         bot.BotPlayerService
 }
 
 // NewGameMessageHandler creates a new game message handler
@@ -27,12 +30,13 @@ func NewGameMessageHandler(gameService game.GameService, matchmakingService matc
 		gameService:        gameService,
 		matchmakingService: matchmakingService,
 		hub:                hub,
+		botService:         bot.NewBotPlayerService(),
 	}
-	
+
 	// Set up matchmaking callbacks
 	matchmakingService.SetGameCreatedCallback(handler.onGameCreated)
 	matchmakingService.SetBotGameCallback(handler.onBotGameCreated)
-	
+
 	return handler
 }
 
@@ -43,6 +47,8 @@ func (h *GameMessageHandler) HandleMessage(ctx context.Context, conn *Connection
 		return h.handleJoinQueue(ctx, conn, message)
 	case MessageTypeLeaveQueue:
 		return h.handleLeaveQueue(ctx, conn, message)
+	case MessageTypePlayWithBot:
+		return h.handlePlayWithBot(ctx, conn, message)
 	case MessageTypeJoinGame:
 		return h.handleJoinGame(ctx, conn, message)
 	case MessageTypeMakeMove:
@@ -67,8 +73,10 @@ func (h *GameMessageHandler) handleJoinQueue(ctx context.Context, conn *Connecti
 
 	log.Printf("Player %s joining matchmaking queue", username)
 
-	// Update connection with username
+	// Update connection with username and re-register in hub
+	oldUserID := conn.GetUserID()
 	conn.SetUserID(username)
+	h.hub.UpdateConnectionUserID(conn, oldUserID, username)
 
 	// Join matchmaking queue
 	entry, err := h.matchmakingService.JoinQueue(ctx, username)
@@ -79,7 +87,7 @@ func (h *GameMessageHandler) handleJoinQueue(ctx context.Context, conn *Connecti
 	// Send queue joined confirmation
 	estimatedWait := fmt.Sprintf("%ds", int(entry.Timeout.Sub(entry.JoinedAt).Seconds()))
 	queueJoinedMsg := CreateQueueJoinedMessage(1, estimatedWait) // Position will be updated by status updates
-	
+
 	data, err := queueJoinedMsg.ToJSON()
 	if err != nil {
 		return fmt.Errorf("failed to serialize queue joined message: %w", err)
@@ -119,6 +127,38 @@ func (h *GameMessageHandler) handleLeaveQueue(ctx context.Context, conn *Connect
 	return nil
 }
 
+// handlePlayWithBot handles direct bot game requests
+func (h *GameMessageHandler) handlePlayWithBot(ctx context.Context, conn *Connection, message *Message) error {
+	username, ok := message.Payload["username"].(string)
+	if !ok || username == "" {
+		return fmt.Errorf("invalid username")
+	}
+
+	log.Printf("Player %s requesting bot game", username)
+
+	// Update connection with username and re-register in hub
+	oldUserID := conn.GetUserID()
+	conn.SetUserID(username)
+	h.hub.UpdateConnectionUserID(conn, oldUserID, username)
+
+	// Create bot game directly via matchmaking service
+	gameSession, err := h.matchmakingService.CreateBotGame(ctx, username)
+	if err != nil {
+		log.Printf("Failed to create bot game: %v", err)
+		return fmt.Errorf("failed to create bot game: %w", err)
+	}
+
+	log.Printf("Bot game created: %s vs %s (Game ID: %s)", username, gameSession.Player2, gameSession.ID)
+
+	// Call the bot game created handler
+	if err := h.onBotGameCreated(ctx, username, gameSession); err != nil {
+		log.Printf("Failed to handle bot game creation: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 // sendQueueStatusUpdates sends periodic queue status updates to a player
 func (h *GameMessageHandler) sendQueueStatusUpdates(ctx context.Context, conn *Connection, username string) {
 	ticker := time.NewTicker(2 * time.Second) // Update every 2 seconds
@@ -144,7 +184,7 @@ func (h *GameMessageHandler) sendQueueStatusUpdates(ctx context.Context, conn *C
 			// Send status update
 			waitTime := fmt.Sprintf("%.0fs", status.WaitTime.Seconds())
 			timeRemaining := fmt.Sprintf("%.0fs", status.TimeRemaining.Seconds())
-			
+
 			queueStatusMsg := CreateQueueStatusMessage(
 				status.InQueue,
 				status.Position,
@@ -188,7 +228,160 @@ func (h *GameMessageHandler) onBotGameCreated(ctx context.Context, player string
 	// Send game started message to player
 	h.notifyGameStarted(ctx, player, gameSession)
 
+	// If bot goes first (player is yellow), make bot move
+	if gameSession.CurrentTurn == models.PlayerColorRed && h.isBot(gameSession.Player1) {
+		go h.makeBotMove(ctx, gameSession.ID)
+	} else if gameSession.CurrentTurn == models.PlayerColorYellow && h.isBot(gameSession.Player2) {
+		go h.makeBotMove(ctx, gameSession.ID)
+	}
+
 	return nil
+}
+
+// isBot checks if a username belongs to a bot
+func (h *GameMessageHandler) isBot(username string) bool {
+	return strings.HasPrefix(username, "bot_") || strings.HasPrefix(username, "Bot_") || username == "Bot"
+}
+
+// makeBotMove makes a move for the bot player
+func (h *GameMessageHandler) makeBotMove(ctx context.Context, gameID string) {
+	// Add a small delay to make it feel more natural
+	time.Sleep(500 * time.Millisecond)
+
+	session, err := h.gameService.GetSession(ctx, gameID)
+	if err != nil {
+		log.Printf("Failed to get session for bot move: %v", err)
+		return
+	}
+
+	if session.Status != models.StatusInProgress {
+		return
+	}
+
+	// Determine which player is the bot
+	botUsername := ""
+	var botColor models.PlayerColor
+	if h.isBot(session.Player1) {
+		botUsername = session.Player1
+		botColor = models.PlayerColorRed
+	} else if h.isBot(session.Player2) {
+		botUsername = session.Player2
+		botColor = models.PlayerColorYellow
+	}
+
+	if botUsername == "" {
+		return // No bot in this game
+	}
+
+	// Check if it's the bot's turn
+	if session.CurrentTurn != botColor {
+		return
+	}
+
+	// Create a bot player and get the best move
+	botPlayer := h.botService.CreateBot(bot.DifficultyMedium)
+	board := &session.Board
+	column, err := h.botService.GetBotMove(ctx, botPlayer, board, botColor)
+	if err != nil {
+		log.Printf("Failed to get bot move: %v", err)
+		// Fallback: find any valid column
+		for col := 0; col < 7; col++ {
+			if session.Board.IsValidMove(col) {
+				column = col
+				break
+			}
+		}
+	}
+
+	log.Printf("Bot %s making move in column %d", botUsername, column)
+
+	// Make the move
+	row := session.Board.Height[column]
+	if err := session.Board.MakeMove(column, botColor); err != nil {
+		log.Printf("Failed to make bot move: %v", err)
+		return
+	}
+
+	// Check for win or draw
+	winner := session.Board.CheckWin()
+	if winner != nil {
+		if err := h.gameService.CompleteGame(ctx, gameID, winner); err != nil {
+			log.Printf("Failed to complete game: %v", err)
+		}
+	} else if session.Board.IsFull() {
+		if err := h.gameService.CompleteGame(ctx, gameID, nil); err != nil {
+			log.Printf("Failed to complete game: %v", err)
+		}
+	} else {
+		if err := h.gameService.SwitchTurn(ctx, gameID); err != nil {
+			log.Printf("Failed to switch turn: %v", err)
+		}
+	}
+
+	// Get updated session
+	updatedSession, err := h.gameService.GetSession(ctx, gameID)
+	if err != nil {
+		log.Printf("Failed to get updated session: %v", err)
+		return
+	}
+
+	// Calculate move count
+	moveCount := 0
+	for col := 0; col < 7; col++ {
+		moveCount += updatedSession.Board.Height[col]
+	}
+
+	// Broadcast move to all players in the game
+	nextTurn := string(updatedSession.CurrentTurn)
+	if updatedSession.Status == models.StatusCompleted {
+		nextTurn = ""
+	}
+
+	moveMadeMsg := CreateMoveMadeMessage(
+		gameID,
+		botUsername,
+		column,
+		row,
+		updatedSession.Board,
+		nextTurn,
+		moveCount,
+	)
+
+	data, err := moveMadeMsg.ToJSON()
+	if err != nil {
+		log.Printf("Failed to serialize move made message: %v", err)
+		return
+	}
+
+	h.hub.BroadcastToGame(gameID, data, "")
+
+	// If game ended, send game ended message
+	if updatedSession.Status == models.StatusCompleted {
+		var winnerUsername *string
+		if updatedSession.Winner != nil {
+			if *updatedSession.Winner == models.PlayerColorRed {
+				winnerUsername = &updatedSession.Player1
+			} else {
+				winnerUsername = &updatedSession.Player2
+			}
+		}
+
+		reason := "connect_four"
+		if updatedSession.Board.IsFull() && updatedSession.Winner == nil {
+			reason = "draw"
+		}
+
+		duration := int(time.Since(updatedSession.StartTime).Seconds())
+
+		gameEndedMsg := CreateGameEndedMessage(gameID, winnerUsername, reason, duration)
+		endData, err := gameEndedMsg.ToJSON()
+		if err != nil {
+			log.Printf("Failed to serialize game ended message: %v", err)
+			return
+		}
+
+		h.hub.BroadcastToGame(gameID, endData, "")
+	}
 }
 
 // notifyMatchFound sends a match found notification to a player
@@ -235,7 +428,7 @@ func (h *GameMessageHandler) notifyGameStarted(ctx context.Context, username str
 		opponent = gameSession.Player1
 	}
 
-	isBot := opponent[:4] == "bot_" || opponent == "Bot"
+	isBot := h.isBot(opponent)
 	yourColor := string(gameSession.GetPlayerColor(username))
 	currentTurn := string(gameSession.CurrentTurn)
 
@@ -245,6 +438,7 @@ func (h *GameMessageHandler) notifyGameStarted(ctx context.Context, username str
 		yourColor,
 		currentTurn,
 		isBot,
+		gameSession.Board,
 	)
 
 	data, err := gameStartedMsg.ToJSON()
@@ -255,9 +449,10 @@ func (h *GameMessageHandler) notifyGameStarted(ctx context.Context, username str
 
 	conn.SendMessage(data)
 
-	// Send initial game state
-	h.sendGameState(ctx, conn, gameSession.ID)
+	// Note: game_started message already contains all necessary game state information
+	// No need to send a separate game_state message
 }
+
 func (h *GameMessageHandler) handleJoinGame(ctx context.Context, conn *Connection, message *Message) error {
 	username, ok := message.Payload["username"].(string)
 	if !ok || username == "" {
@@ -308,6 +503,7 @@ func (h *GameMessageHandler) handleJoinGame(ctx context.Context, conn *Connectio
 		yourColor,
 		currentTurn,
 		isBot,
+		session.Board,
 	)
 
 	data, err := gameStartedMsg.ToJSON()
@@ -357,7 +553,7 @@ func (h *GameMessageHandler) handleMakeMove(ctx context.Context, conn *Connectio
 	// Make the move
 	playerColor := session.GetPlayerColor(username)
 	row := session.Board.Height[column] // Get row before making move
-	
+
 	if err := session.Board.MakeMove(column, playerColor); err != nil {
 		return fmt.Errorf("failed to make move: %w", err)
 	}
@@ -441,6 +637,14 @@ func (h *GameMessageHandler) handleMakeMove(ctx context.Context, conn *Connectio
 		}
 
 		h.hub.BroadcastToGame(gameID, endData, "")
+	} else {
+		// If game is still in progress and it's now the bot's turn, make bot move
+		if h.isBot(updatedSession.Player1) || h.isBot(updatedSession.Player2) {
+			currentPlayer := updatedSession.GetCurrentPlayer()
+			if h.isBot(currentPlayer) {
+				go h.makeBotMove(ctx, gameID)
+			}
+		}
 	}
 
 	return nil

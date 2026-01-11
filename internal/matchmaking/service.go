@@ -18,11 +18,14 @@ type MatchmakingService interface {
 	LeaveQueue(ctx context.Context, username string) error
 	GetQueueStatus(ctx context.Context, username string) (*QueueStatus, error)
 	GetQueueLength(ctx context.Context) int
-	
+
 	// Matchmaking operations
 	StartMatchmaking(ctx context.Context) error
 	StopMatchmaking()
-	
+
+	// Direct bot game creation
+	CreateBotGame(ctx context.Context, player string) (*models.GameSession, error)
+
 	// Event callbacks
 	SetGameCreatedCallback(callback GameCreatedCallback)
 	SetBotGameCallback(callback BotGameCallback)
@@ -30,9 +33,9 @@ type MatchmakingService interface {
 
 // QueueEntry represents a player in the matchmaking queue
 type QueueEntry struct {
-	Username  string    `json:"username"`
-	JoinedAt  time.Time `json:"joinedAt"`
-	Timeout   time.Time `json:"timeout"`
+	Username string    `json:"username"`
+	JoinedAt time.Time `json:"joinedAt"`
+	Timeout  time.Time `json:"timeout"`
 }
 
 // QueueStatus represents the current status of a player in the queue
@@ -52,21 +55,21 @@ type BotGameCallback func(ctx context.Context, player string, gameSession *model
 // matchmakingService implements MatchmakingService interface
 type matchmakingService struct {
 	gameService game.GameService
-	
+
 	// Queue management
 	queue       []*QueueEntry
 	queueMutex  sync.RWMutex
 	playerIndex map[string]int // username -> queue position
-	
+
 	// Configuration
-	matchTimeout    time.Duration // 10 seconds per requirement
-	matchInterval   time.Duration // How often to check for matches
-	logger          *slog.Logger
-	
+	matchTimeout  time.Duration // 10 seconds per requirement
+	matchInterval time.Duration // How often to check for matches
+	logger        *slog.Logger
+
 	// Worker control
 	matchWorkerCancel context.CancelFunc
 	matchWorkerWg     sync.WaitGroup
-	
+
 	// Event callbacks
 	gameCreatedCallback GameCreatedCallback
 	botGameCallback     BotGameCallback
@@ -96,7 +99,7 @@ func NewMatchmakingService(
 	if config == nil {
 		config = DefaultServiceConfig()
 	}
-	
+
 	return &matchmakingService{
 		gameService:   gameService,
 		queue:         make([]*QueueEntry, 0),
@@ -113,21 +116,24 @@ func (s *matchmakingService) JoinQueue(ctx context.Context, username string) (*Q
 	if username == "" {
 		return nil, fmt.Errorf("username cannot be empty")
 	}
-	
+
 	s.queueMutex.Lock()
 	defer s.queueMutex.Unlock()
-	
+
 	// Check if player is already in queue
 	if _, exists := s.playerIndex[username]; exists {
-		return nil, fmt.Errorf("player %s is already in queue", username)
+		s.logger.Info("player already in queue, ignoring duplicate join", "username", username)
+		// Return the existing entry instead of error (graceful handling)
+		pos := s.playerIndex[username]
+		return s.queue[pos], nil
 	}
-	
+
 	// Validate that username is unique within active sessions (Requirement 1.5)
 	activeSession, err := s.gameService.GetActiveSessionByPlayer(ctx, username)
 	if err == nil && activeSession != nil {
 		return nil, fmt.Errorf("player %s is already in an active game", username)
 	}
-	
+
 	// Create queue entry
 	now := time.Now()
 	entry := &QueueEntry{
@@ -135,17 +141,17 @@ func (s *matchmakingService) JoinQueue(ctx context.Context, username string) (*Q
 		JoinedAt: now,
 		Timeout:  now.Add(s.matchTimeout),
 	}
-	
+
 	// Add to queue
 	s.queue = append(s.queue, entry)
 	s.playerIndex[username] = len(s.queue) - 1
-	
+
 	s.logger.Info("player joined matchmaking queue",
 		"username", username,
 		"queueLength", len(s.queue),
 		"timeout", s.matchTimeout.String(),
 	)
-	
+
 	return entry, nil
 }
 
@@ -154,23 +160,24 @@ func (s *matchmakingService) LeaveQueue(ctx context.Context, username string) er
 	if username == "" {
 		return fmt.Errorf("username cannot be empty")
 	}
-	
+
 	s.queueMutex.Lock()
 	defer s.queueMutex.Unlock()
-	
+
 	position, exists := s.playerIndex[username]
 	if !exists {
-		return fmt.Errorf("player %s is not in queue", username)
+		s.logger.Info("player not in queue, ignoring duplicate leave", "username", username)
+		return nil // Graceful handling - not an error
 	}
-	
+
 	// Remove from queue
 	s.removeFromQueue(position)
-	
+
 	s.logger.Info("player left matchmaking queue",
 		"username", username,
 		"queueLength", len(s.queue),
 	)
-	
+
 	return nil
 }
 
@@ -179,12 +186,12 @@ func (s *matchmakingService) removeFromQueue(position int) {
 	if position < 0 || position >= len(s.queue) {
 		return
 	}
-	
+
 	username := s.queue[position].Username
-	
+
 	// Remove from slice
 	s.queue = append(s.queue[:position], s.queue[position+1:]...)
-	
+
 	// Rebuild index
 	delete(s.playerIndex, username)
 	for i, entry := range s.queue {
@@ -197,17 +204,17 @@ func (s *matchmakingService) GetQueueStatus(ctx context.Context, username string
 	if username == "" {
 		return nil, fmt.Errorf("username cannot be empty")
 	}
-	
+
 	s.queueMutex.RLock()
 	defer s.queueMutex.RUnlock()
-	
+
 	position, exists := s.playerIndex[username]
 	if !exists {
 		return &QueueStatus{
 			InQueue: false,
 		}, nil
 	}
-	
+
 	entry := s.queue[position]
 	now := time.Now()
 	waitTime := now.Sub(entry.JoinedAt)
@@ -215,7 +222,7 @@ func (s *matchmakingService) GetQueueStatus(ctx context.Context, username string
 	if timeRemaining < 0 {
 		timeRemaining = 0
 	}
-	
+
 	return &QueueStatus{
 		InQueue:       true,
 		Position:      position + 1, // 1-based position
@@ -228,7 +235,7 @@ func (s *matchmakingService) GetQueueStatus(ctx context.Context, username string
 func (s *matchmakingService) GetQueueLength(ctx context.Context) int {
 	s.queueMutex.RLock()
 	defer s.queueMutex.RUnlock()
-	
+
 	return len(s.queue)
 }
 
@@ -237,22 +244,22 @@ func (s *matchmakingService) StartMatchmaking(ctx context.Context) error {
 	if s.matchWorkerCancel != nil {
 		return fmt.Errorf("matchmaking is already running")
 	}
-	
+
 	matchCtx, cancel := context.WithCancel(ctx)
 	s.matchWorkerCancel = cancel
-	
+
 	s.matchWorkerWg.Add(1)
 	go func() {
 		defer s.matchWorkerWg.Done()
-		
+
 		ticker := time.NewTicker(s.matchInterval)
 		defer ticker.Stop()
-		
+
 		s.logger.Info("matchmaking worker started",
 			"matchTimeout", s.matchTimeout.String(),
 			"matchInterval", s.matchInterval.String(),
 		)
-		
+
 		for {
 			select {
 			case <-matchCtx.Done():
@@ -263,7 +270,7 @@ func (s *matchmakingService) StartMatchmaking(ctx context.Context) error {
 			}
 		}
 	}()
-	
+
 	return nil
 }
 
@@ -280,14 +287,14 @@ func (s *matchmakingService) StopMatchmaking() {
 func (s *matchmakingService) processMatchmaking(ctx context.Context) {
 	s.queueMutex.Lock()
 	defer s.queueMutex.Unlock()
-	
+
 	now := time.Now()
 	var toRemove []int
-	
+
 	// Process queue from oldest to newest
 	for i := 0; i < len(s.queue); i++ {
 		entry := s.queue[i]
-		
+
 		// Check if player has timed out (Requirement 1.3: 10-second timeout)
 		if now.After(entry.Timeout) {
 			// Start bot game
@@ -300,11 +307,11 @@ func (s *matchmakingService) processMatchmaking(ctx context.Context) {
 			toRemove = append(toRemove, i)
 			continue
 		}
-		
+
 		// Try to find a match with another player (Requirement 1.2)
 		for j := i + 1; j < len(s.queue); j++ {
 			otherEntry := s.queue[j]
-			
+
 			// Create game between the two players
 			if err := s.createPlayerGame(ctx, entry.Username, otherEntry.Username); err != nil {
 				s.logger.Error("failed to create player game",
@@ -314,18 +321,18 @@ func (s *matchmakingService) processMatchmaking(ctx context.Context) {
 				)
 				continue
 			}
-			
+
 			// Mark both players for removal
 			toRemove = append(toRemove, i, j)
 			break
 		}
-		
+
 		// If we found a match, skip to next iteration
 		if len(toRemove) > 0 && toRemove[len(toRemove)-1] == i {
 			break
 		}
 	}
-	
+
 	// Remove matched/timed-out players (in reverse order to maintain indices)
 	for i := len(toRemove) - 1; i >= 0; i-- {
 		s.removeFromQueue(toRemove[i])
@@ -340,13 +347,13 @@ func (s *matchmakingService) createPlayerGame(ctx context.Context, player1, play
 	if err != nil {
 		return fmt.Errorf("failed to create game session: %w", err)
 	}
-	
+
 	s.logger.Info("created player vs player game",
 		"gameID", gameSession.ID,
 		"player1", player1,
 		"player2", player2,
 	)
-	
+
 	// Notify via callback if set
 	if s.gameCreatedCallback != nil {
 		if err := s.gameCreatedCallback(ctx, player1, player2, gameSession); err != nil {
@@ -356,7 +363,7 @@ func (s *matchmakingService) createPlayerGame(ctx context.Context, player1, play
 			)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -364,19 +371,19 @@ func (s *matchmakingService) createPlayerGame(ctx context.Context, player1, play
 // Implements Requirement 1.3: start bot game after 10-second timeout
 func (s *matchmakingService) createBotGame(ctx context.Context, player string) error {
 	botUsername := "bot_" + generateBotID()
-	
+
 	// Create game session with bot
 	gameSession, err := s.gameService.CreateSession(ctx, player, botUsername)
 	if err != nil {
 		return fmt.Errorf("failed to create bot game session: %w", err)
 	}
-	
+
 	s.logger.Info("created player vs bot game",
 		"gameID", gameSession.ID,
 		"player", player,
 		"bot", botUsername,
 	)
-	
+
 	// Notify via callback if set
 	if s.botGameCallback != nil {
 		if err := s.botGameCallback(ctx, player, gameSession); err != nil {
@@ -386,8 +393,28 @@ func (s *matchmakingService) createBotGame(ctx context.Context, player string) e
 			)
 		}
 	}
-	
+
 	return nil
+}
+
+// CreateBotGame creates a game between a player and a bot (public method)
+// Returns the created game session
+func (s *matchmakingService) CreateBotGame(ctx context.Context, player string) (*models.GameSession, error) {
+	botUsername := "bot_" + generateBotID()
+
+	// Create game session with bot
+	gameSession, err := s.gameService.CreateSession(ctx, player, botUsername)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create bot game session: %w", err)
+	}
+
+	s.logger.Info("created player vs bot game (direct)",
+		"gameID", gameSession.ID,
+		"player", player,
+		"bot", botUsername,
+	)
+
+	return gameSession, nil
 }
 
 // SetGameCreatedCallback sets the callback for when a player vs player game is created
