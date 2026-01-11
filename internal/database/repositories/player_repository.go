@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"connect4-multiplayer/pkg/models"
@@ -121,7 +122,7 @@ func (r *playerRepository) GetByAuthUserID(ctx context.Context, authUserID strin
 	return &player, nil
 }
 
-// UpsertFromProfile creates or updates a player from auth profile using database function
+// UpsertFromProfile creates or updates a player from auth profile
 func (r *playerRepository) UpsertFromProfile(ctx context.Context, authUserID, username string) (string, error) {
 	if authUserID == "" || username == "" {
 		return "", fmt.Errorf("authUserID and username cannot be empty")
@@ -130,18 +131,41 @@ func (r *playerRepository) UpsertFromProfile(ctx context.Context, authUserID, us
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var playerID string
-	err := r.db.WithContext(ctx).Raw(
-		"SELECT upsert_player_from_profile(?, ?)",
-		authUserID,
-		username,
-	).Scan(&playerID).Error
-
-	if err != nil {
-		return "", fmt.Errorf("failed to upsert player from profile: %w", err)
+	// First, try to find existing player by auth_user_id
+	var existingPlayer models.Player
+	err := r.db.WithContext(ctx).First(&existingPlayer, "auth_user_id = ?", authUserID).Error
+	
+	if err == nil {
+		// Player exists, update it
+		existingPlayer.Username = username
+		existingPlayer.IsGuest = false
+		existingPlayer.UpdatedAt = time.Now()
+		
+		if err := r.db.WithContext(ctx).Save(&existingPlayer).Error; err != nil {
+			return "", fmt.Errorf("failed to update player: %w", err)
+		}
+		return existingPlayer.ID, nil
+	}
+	
+	if err != gorm.ErrRecordNotFound {
+		return "", fmt.Errorf("failed to query player: %w", err)
 	}
 
-	return playerID, nil
+	// Player doesn't exist, create new one
+	newPlayer := &models.Player{
+		ID:         generateUUID(),
+		Username:   username,
+		AuthUserID: &authUserID,
+		IsGuest:    false,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	if err := r.db.WithContext(ctx).Create(newPlayer).Error; err != nil {
+		return "", fmt.Errorf("failed to create player: %w", err)
+	}
+
+	return newPlayer.ID, nil
 }
 
 // Update updates a player with optimistic locking
@@ -256,4 +280,9 @@ func indexOfSubstring(s, substr string) int {
 		}
 	}
 	return -1
+}
+
+// generateUUID generates a new UUID string
+func generateUUID() string {
+	return uuid.New().String()
 }
