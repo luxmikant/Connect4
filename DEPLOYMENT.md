@@ -130,6 +130,7 @@ git push origin main
    - **Start Command**: `./server`
    - **Plan**: **Free**
 
+
 4. **Add Environment Variables**:
 
 Click **"Advanced"** → **"Add Environment Variable"**
@@ -141,7 +142,7 @@ ENVIRONMENT=production
 GIN_MODE=release
 
 # Database (use Internal Database URL from step 2.1)
-DATABASE_URL=postgresql://connect4_user:password@dpg-xxx-a.oregon-postgres.render.com/connect4
+DATABASE_URL=postgresql://connect4_user:CuD3dhhVyDff5ijQQEMe1HJ9YVzDOs5X@dpg-d5dr4dhr0fns73aosvug-a/connect4_ojtw
 
 # Kafka (from your Confluent Cloud)
 KAFKA_BOOTSTRAP_SERVERS=pkc-9q8rv.ap-south-2.aws.confluent.cloud:9092
@@ -160,20 +161,55 @@ REDIS_URL=redis://localhost:6379
 
 #### 2.3 Run Database Migrations
 
-After deployment, run migrations:
+**⚠️ Note**: Shell access requires Render Premium plan. Use these **free tier alternatives**:
 
-1. Go to your service → **"Shell"** tab
-2. Run:
-```bash
-./server migrate
+**Option 1: Automatic on Server Startup (Recommended)**
+
+The server will auto-run migrations on startup. No action needed!
+
+**Option 2: Use Build Hook in render.yaml**
+
+Update your `render.yaml` build command to run migrations during build:
+```yaml
+buildCommand: go build -o server ./cmd/server && go run ./cmd/migrate -direction up
+startCommand: ./server
 ```
 
-Or use the migration binary:
-```bash
-# Build migrate tool
-go build -o migrate ./cmd/migrate
-./migrate up
+This will:
+1. Build the server executable
+2. Run migrations automatically during build
+3. Start the server after migrations complete
+
+**Expected Log Output:**
 ```
+$ go build -o server ./cmd/server && go run ./cmd/migrate -direction up
+Running migrations...
+Migrations completed successfully
+$ ./server
+2026/01/05 18:30:00 Running database migrations...
+2026/01/05 18:30:02 Migrations completed successfully
+2026/01/05 18:30:02 Server starting on port 8080
+```
+
+**Option 3: Connect from Local Machine**
+
+If migrations don't run automatically, connect from your local machine:
+
+```bash
+# 1. Get External Database URL from Render Dashboard
+#    Go to: Database → Info → External Database URL
+#    Example: postgres://user:pass@oregon-postgres.render.com/dbname
+
+# 2. Set environment variable locally
+export DATABASE_URL="postgres://your-external-url-here"
+
+# 3. Run migrations from your machine
+go run ./cmd/migrate -direction up
+```
+
+**Verify Migrations**:
+- Check server logs for "Migrations completed successfully"
+- Or use database query tool to verify tables exist
 
 #### 2.4 Deploy Analytics Service (Optional)
 
@@ -211,12 +247,14 @@ const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
 
 3. **Create `vercel.json`** in `web/` directory:
 
+⚠️ **IMPORTANT**: Replace `https://connect4-server.onrender.com` with your **actual Render URL** (e.g., `https://connect4-server-qgi9.onrender.com`)
+
 ```json
 {
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://connect4-server.onrender.com/api/:path*"
+      "destination": "https://connect4-server-qgi9.onrender.com/api/:path*"
     }
   ],
   "headers": [
@@ -232,6 +270,12 @@ const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
   ]
 }
 ```
+
+**How to get your Render URL:**
+- Go to https://dashboard.render.com
+- Click `connect4-server` service
+- Copy the URL shown at the top of the page
+- Use that URL in the `destination` field above
 
 4. **Commit changes**:
 
@@ -525,22 +569,39 @@ git push origin main  # Auto-deploys
 
 Before going live:
 
-- [ ] Environment variables configured
-- [ ] Database migrations run
-- [ ] CORS settings updated
-- [ ] Frontend API URLs updated
-- [ ] SSL/TLS enabled (automatic)
-- [ ] Health checks passing
-- [ ] Test game functionality
-- [ ] Test WebSocket connections
-- [ ] Test matchmaking
-- [ ] Test bot gameplay
-- [ ] Test leaderboard
-- [ ] Kafka analytics working
-- [ ] Monitor for errors
+- [ ] GitHub repository created and pushed
+- [ ] Render account created
+- [ ] Vercel account created
+- [ ] Database credentials obtained (Supabase or Render)
+- [ ] Kafka credentials ready (Confluent Cloud)
+- [ ] Environment variables configured on Render
+- [ ] Backend deployed successfully
+- [ ] **Migrations run automatically** (check server logs)
+- [ ] Frontend deployed to Vercel
+- [ ] CORS settings updated with Vercel URL
+- [ ] Frontend API URLs point to Render backend
+- [ ] SSL/TLS enabled (automatic on both platforms)
+- [ ] Health check passing: `curl https://your-app.onrender.com/health`
+- [ ] Test WebSocket connections from frontend
+- [ ] Test game functionality (bot + multiplayer)
+- [ ] Test matchmaking queue
+- [ ] Test leaderboard display
+- [ ] Analytics service running (optional)
+- [ ] Monitor logs for errors
 
 ---
 
-🎉 **Your Connect4 game is now live!**
+## 🎉 Success!
 
-Share your deployment URL with friends and start playing!
+Your Connect4 game is now live! Share your Vercel URL with friends and start playing!
+
+**Common Issues?** See Troubleshooting section above or check:
+- Server logs on Render
+- Browser console for frontend errors
+- Database connection string is correct
+- CORS origins include your Vercel domain
+
+**Need Help?** 
+- Check [DEPLOYMENT.md](DEPLOYMENT.md) for detailed steps
+- Review server logs for migration status
+- Test locally first: `./server.exe` and `cd web && npm run dev`
