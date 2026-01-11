@@ -8,6 +8,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://connect4-server-qgi9.onrender.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
