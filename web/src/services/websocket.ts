@@ -13,7 +13,11 @@ class WebSocketService {
 
   constructor(baseUrl?: string) {
     // baseUrl should be just the domain (e.g., wss://example.com), not include /ws path
-    this.baseUrl = baseUrl || import.meta.env.VITE_WS_URL || "wss://localhost:8080";
+    // Use ws:// for localhost, wss:// for production
+    const defaultUrl = window.location.hostname === 'localhost' 
+      ? 'ws://localhost:8080'
+      : `wss://${window.location.host}`;
+    this.baseUrl = baseUrl || import.meta.env.VITE_WS_URL || defaultUrl;
   }
 
   public connect(userId?: string) {

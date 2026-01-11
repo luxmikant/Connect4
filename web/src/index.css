@@ -1,3 +1,61 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;600;800;900&display=swap');
+
+@theme {
+  /* Colors */
+  --color-game-bg: #0f172a;
+  --color-game-board: #1e293b;
+  --color-game-slot: #0f172a;
+  --color-game-red: #f43f5e;
+  --color-game-yellow: #fbbf24;
+  --color-game-accent: #3b82f6;
+
+  /* Fonts */
+  --font-heading: 'Inter', sans-serif;
+  --font-mono: 'Fira Code', monospace;
+
+  /* Animations */
+  --animate-pulse-glow: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-drop-in: drop-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+    50% { opacity: 0.7; box-shadow: 0 0 10px rgba(59, 130, 246, 0.2); }
+  }
+
+  @keyframes drop-in {
+    0% { transform: translateY(-500%); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+}
+
+/* Base Styles */
+body {
+  background-color: var(--color-game-bg);
+  color: white;
+  font-family: var(--font-heading);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a; 
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b; 
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6; 
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-700 rounded-full hover:bg-slate-600 transition-colors;
+}
+

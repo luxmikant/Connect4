@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../lib/utils';
 import type { GameState } from '../types/websocket';
+import { useGameSound } from '../hooks/useGameSound';
 
 interface GameBoardProps {
   gameState: GameState | null;
@@ -8,71 +11,96 @@ interface GameBoardProps {
 }
 
 export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onColumnClick, isMyTurn }) => {
-  if (!gameState) {
-    return <div style={{ color: 'white', padding: '20px' }}>Loading game...</div>;
-  }
+  const { playSound } = useGameSound();
 
-  // Handle both array board and object with cells property
-  const boardData = gameState?.board;
-  const grid: (number | string)[][] = Array.isArray(boardData) 
-    ? boardData 
-    : (boardData as any)?.cells || Array(6).fill(null).map(() => Array(7).fill(""));
+  // Safe grid parsing
+  const grid = useMemo(() => {
+    if (!gameState) return Array(6).fill(Array(7).fill(0));
+    const boardData = gameState.board;
+    // Ensure we always have a valid grid
+    if (Array.isArray(boardData)) return boardData;
+    return (boardData as any)?.cells || Array(6).fill(Array(7).fill(0));
+  }, [gameState]);
 
-  // Reverse the grid to render from bottom to top (Connect 4 style)
-  const reversedGrid = [...grid].reverse();
+  // Visual grid needs row 0 at TOP.
+  const visualGrid = useMemo(() => [...grid].reverse(), [grid]);
 
-  const getCellColor = (cell: number | string): string => {
-    if (cell === 1 || cell === "red") return "#ef4444"; // red
-    if (cell === 2 || cell === "yellow") return "#facc15"; // yellow
-    return "#1f2937"; // empty (dark gray)
+  const handleColumnClick = (colIndex: number) => {
+    if (isMyTurn) {
+      playSound('drop');
+      onColumnClick(colIndex);
+    }
   };
 
   return (
-    <div 
-      style={{
-        backgroundColor: '#2563eb',
-        padding: '16px',
-        borderRadius: '16px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        display: 'inline-block',
-      }}
-    >
-      <div 
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: '8px',
-        }}
-      >
-        {reversedGrid.map((row, rowIndex) => 
-          row.map((cell, colIndex) => (
+    <div className="relative p-4 md:p-8 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl">
+      {/* Game Board Container */}
+      <div className="relative bg-game-board rounded-lg p-3 shadow-inner border-4 border-slate-700">
+        
+        {/* The Grid of Slots */}
+        <div className="grid grid-cols-7 gap-2 md:gap-3 relative z-10">
+          {/* Generate columns for click handling */}
+          {Array.from({ length: 7 }).map((_, colIndex) => (
             <div
-              key={`${rowIndex}-${colIndex}`}
-              onClick={() => isMyTurn && onColumnClick(colIndex)}
-              style={{
-                width: '60px',
-                height: '60px',
-                backgroundColor: getCellColor(cell),
-                borderRadius: '50%',
-                cursor: isMyTurn ? 'pointer' : 'not-allowed',
-                border: '3px solid #1e40af',
-                transition: 'transform 0.1s, box-shadow 0.1s',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)',
-              }}
-              onMouseEnter={(e) => {
-                if (isMyTurn) {
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                  e.currentTarget.style.boxShadow = '0 0 10px rgba(255,255,255,0.5), inset 0 2px 4px rgba(0,0,0,0.3)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.3)';
-              }}
-            />
-          ))
-        )}
+              key={`col-${colIndex}`}
+              className="flex flex-col gap-2 md:gap-3 group cursor-pointer"
+              onClick={() => handleColumnClick(colIndex)}
+            >
+              {/* Hover Indicator (The "Ghost" Disc) */}
+              <div className={cn(
+                "h-2 w-full rounded-full transition-all duration-300 opacity-0 transform translate-y-2",
+                isMyTurn && "group-hover:opacity-100 group-hover:translate-y-0",
+                isMyTurn && "bg-white/50 shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+              )} />
+
+              {/* Rows within the column */}
+              {visualGrid.map((row, rowIndex) => {
+                const cellValue = row[colIndex]; // Get value at this specific row/col
+                const isRed = cellValue === 1 || cellValue === "red";
+                const isYellow = cellValue === 2 || cellValue === "yellow";
+
+                return (
+                  <div 
+                    key={`${rowIndex}-${colIndex}`} 
+                    className="relative w-8 h-8 md:w-12 md:h-12 lg:w-16 lg:h-16 rounded-full bg-game-slot shadow-inner overflow-hidden"
+                  >
+                    <AnimatePresence mode='popLayout'>
+                      {(isRed || isYellow) && (
+                        <motion.div
+                          initial={{ y: -300, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ 
+                            type: "spring", 
+                            stiffness: 400, 
+                            damping: 25,
+                            mass: 1 
+                          }}
+                          className={cn(
+                            "w-full h-full rounded-full shadow-[inset_-2px_-2px_6px_rgba(0,0,0,0.3)]",
+                            isRed ? "bg-game-red" : "bg-game-yellow",
+                            // Add a shine effect
+                            "after:content-[''] after:absolute after:top-2 after:left-2 after:w-1/3 after:h-1/3 after:bg-white/30 after:rounded-full after:blur-[1px]"
+                          )}
+                        />
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Board Legs (Purely decorative) */}
+        <div className="absolute -bottom-6 -left-2 w-4 h-24 bg-slate-800 rounded-b-lg -z-10 transform -rotate-6" />
+        <div className="absolute -bottom-6 -right-2 w-4 h-24 bg-slate-800 rounded-b-lg -z-10 transform rotate-6" />
       </div>
+
+      {/* Status Glow */}
+      {isMyTurn && (
+        <div className="absolute -inset-1 bg-gradient-to-r from-green-400 to-blue-500 rounded-3xl blur opacity-20 animate-pulse -z-10 pointer-events-none" />
+      )}
     </div>
   );
 };

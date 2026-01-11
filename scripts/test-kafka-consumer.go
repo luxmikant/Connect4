@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package main
 
 import (
@@ -66,13 +69,13 @@ func main() {
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	
+
 	// Show status every 10 seconds
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	startTime := time.Now()
-	
+
 	for {
 		select {
 		case <-quit:

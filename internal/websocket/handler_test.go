@@ -33,13 +33,18 @@ func TestMessageCreation(t *testing.T) {
 	})
 
 	t.Run("CreateGameStartedMessage", func(t *testing.T) {
-		msg := CreateGameStartedMessage("game123", "opponent", "red", "red", true)
+		mockBoard := make([][]int, 6)
+		for i := range mockBoard {
+			mockBoard[i] = make([]int, 7)
+		}
+		msg := CreateGameStartedMessage("game123", "opponent", "red", "red", true, mockBoard)
 		assert.Equal(t, MessageTypeGameStarted, msg.Type)
 		assert.Equal(t, "game123", msg.Payload["gameId"])
 		assert.Equal(t, "opponent", msg.Payload["opponent"])
 		assert.Equal(t, "red", msg.Payload["yourColor"])
 		assert.Equal(t, "red", msg.Payload["currentTurn"])
 		assert.Equal(t, true, msg.Payload["isBot"])
+		assert.NotNil(t, msg.Payload["board"])
 	})
 
 	t.Run("CreateMoveMadeMessage", func(t *testing.T) {
@@ -82,7 +87,7 @@ func TestMessageCreation(t *testing.T) {
 func TestMessageSerialization(t *testing.T) {
 	t.Run("ToJSON and FromJSON", func(t *testing.T) {
 		originalMsg := CreateJoinGameMessage("testuser", "pvp")
-		
+
 		// Serialize to JSON
 		jsonData, err := originalMsg.ToJSON()
 		require.NoError(t, err)
@@ -91,7 +96,7 @@ func TestMessageSerialization(t *testing.T) {
 		// Deserialize from JSON
 		parsedMsg, err := FromJSON(jsonData)
 		require.NoError(t, err)
-		
+
 		assert.Equal(t, originalMsg.Type, parsedMsg.Type)
 		assert.Equal(t, originalMsg.Payload["username"], parsedMsg.Payload["username"])
 		assert.Equal(t, originalMsg.Payload["gameType"], parsedMsg.Payload["gameType"])
@@ -107,12 +112,12 @@ func TestMessageSerialization(t *testing.T) {
 func TestConnectionConfig(t *testing.T) {
 	t.Run("DefaultConnectionConfig", func(t *testing.T) {
 		config := DefaultConnectionConfig()
-		
+
 		assert.Equal(t, 10*time.Second, config.WriteWait)
 		assert.Equal(t, 60*time.Second, config.PongWait)
 		assert.Equal(t, 54*time.Second, config.PingPeriod)
 		assert.Equal(t, int64(512), config.MaxMessageSize)
-		
+
 		// Verify ping period is less than pong wait (required for proper operation)
 		assert.True(t, config.PingPeriod < config.PongWait)
 	})

@@ -45,7 +45,42 @@ A real-time multiplayer Connect 4 game system built with Go backend, React front
    cd connect4-multiplayer
    ```
 
-2. **Set up credentials** (Choose one option)
+2. **Start the backend services**
+
+   **Option A: Using Docker (Recommended)**
+   ```bash
+   # Start all services (PostgreSQL, Redis, Kafka, Backend)
+   docker-compose up
+   ```
+
+   **Option B: Local Development**
+   ```bash
+   # 1. Start dependencies (PostgreSQL, Redis, Kafka)
+   docker-compose up postgres redis kafka
+
+   # 2. Run database migrations
+   go run cmd/migrate/main.go
+
+   # 3. Start the backend server
+   go run cmd/server/main.go
+   # OR with Make:
+   make run-server
+
+   # 4. (Optional) Start analytics service
+   go run cmd/analytics/main.go
+   ```
+
+   The server will start on **http://localhost:8080** with WebSocket endpoint at **ws://localhost:8080/ws**
+
+3. **Start the frontend**
+   ```bash
+   cd web
+   npm install
+   npm run dev
+   ```
+   Frontend will be available at **http://localhost:5173**
+
+4. **Set up credentials** (Choose one option)
    
    **Option A: Interactive Setup (Recommended)**
    ```bash

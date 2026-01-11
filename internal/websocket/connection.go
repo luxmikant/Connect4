@@ -145,7 +145,7 @@ func (c *Connection) readPump(config ConnectionConfig) {
 		}
 
 		c.UpdateLastSeen()
-		
+
 		// Parse and handle the message
 		var msg Message
 		if err := json.Unmarshal(message, &msg); err != nil {
