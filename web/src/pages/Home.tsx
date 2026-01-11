@@ -1,20 +1,59 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Play, Trophy, Cpu } from 'lucide-react';
+import { Play, Trophy, Cpu, LogIn, UserPlus } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   return (
-    <div className="min-h-screen bg-game-bg flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-game-bg flex flex-col relative overflow-hidden">
+      {/* Navigation Bar */}
+      <nav className="relative z-20 w-full px-6 py-4">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="text-2xl font-black text-white">CONNECT 4</div>
+          <div className="flex gap-3">
+            {user ? (
+              <>
+                <span className="text-slate-300 px-4 py-2">{user.email}</span>
+                <button
+                  onClick={() => signOut()}
+                  className="px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors flex items-center gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Login
+                </button>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="px-4 py-2 rounded-lg bg-game-accent text-white hover:bg-blue-600 transition-colors flex items-center gap-2"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Register
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </nav>
+
       {/* Dynamic Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-purple-600/20 rounded-full blur-[120px] animate-pulse-glow" />
         <div className="absolute top-[40%] -right-[10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px] animate-pulse-glow delay-1000" />
       </div>
 
-      <div className="container mx-auto px-4 relative z-10 flex flex-col items-center">
+      <div className="container mx-auto px-4 relative z-10 flex flex-col items-center justify-center flex-1">
         
         {/* Animated Headline */}
         <motion.div 

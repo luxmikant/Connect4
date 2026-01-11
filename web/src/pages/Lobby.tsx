@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Cpu, Globe, ArrowRight, Trophy } from 'lucide-react';
 import { usePlayer } from '../hooks/usePlayer';
+import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 
 export const Lobby: React.FC = () => {
     const [name, setName] = useState('');
     const [gameMode, setGameMode] = useState<'matchmaking' | 'bot'>('matchmaking');
     const { setUsername } = usePlayer();
+    const { profile } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (profile?.username) {
+            setName(profile.username);
+        }
+    }, [profile]);
 
     const handleJoin = () => {
         if (name.trim()) {
@@ -59,10 +67,17 @@ export const Lobby: React.FC = () => {
                                     onChange={(e) => setName(e.target.value)}
                                     onKeyPress={handleKeyPress}
                                     placeholder="ENTER USERNAME..."
-                                    className="w-full bg-slate-800/50 border border-slate-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono placeholder:text-slate-600"
+                                    className={cn(
+                                        "w-full bg-slate-800/50 border border-slate-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono placeholder:text-slate-600",
+                                        profile?.username && "opacity-75 cursor-not-allowed bg-slate-800/80"
+                                    )}
                                     autoFocus
+                                    readOnly={!!profile?.username}
                                 />
                             </div>
+                            {profile?.username && (
+                                <p className="text-xs text-slate-400 pl-1">Logged in as {profile.username}</p>
+                            )}
                         </div>
 
                         {/* Mode Selection */}

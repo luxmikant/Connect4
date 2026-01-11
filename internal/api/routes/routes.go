@@ -7,6 +7,7 @@ import (
 
 	"connect4-multiplayer/internal/api/handlers"
 	"connect4-multiplayer/internal/api/middleware"
+	"connect4-multiplayer/internal/auth"
 	"connect4-multiplayer/internal/config"
 	"connect4-multiplayer/internal/websocket"
 )
@@ -17,13 +18,15 @@ func SetupRoutes(
 	cfg *config.Config,
 	gameHandler *handlers.GameHandler,
 	leaderboardHandler *handlers.LeaderboardHandler,
+	authHandler *handlers.AuthHandler,
 	wsHandler *websocket.WebSocketHandler,
+	supabaseAuth *auth.SupabaseAuth,
 ) {
 	// Setup middleware
 	setupMiddleware(router, cfg)
 
 	// Setup API routes
-	setupAPIRoutes(router, gameHandler, leaderboardHandler)
+	setupAPIRoutes(router, gameHandler, leaderboardHandler, authHandler, supabaseAuth)
 
 	// Setup WebSocket routes
 	setupWebSocketRoutes(router, wsHandler)
@@ -70,6 +73,8 @@ func setupAPIRoutes(
 	router *gin.Engine,
 	gameHandler *handlers.GameHandler,
 	leaderboardHandler *handlers.LeaderboardHandler,
+	authHandler *handlers.AuthHandler,
+	supabaseAuth *auth.SupabaseAuth,
 ) {
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
@@ -83,6 +88,14 @@ func setupAPIRoutes(
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
+		// Authentication endpoints
+		authGroup := v1.Group("/auth")
+		authGroup.Use(middleware.SupabaseAuthMiddleware(supabaseAuth))
+		{
+			authGroup.GET("/me", authHandler.GetMe)
+			authGroup.PUT("/profile", authHandler.UpdateProfile)
+		}
+
 		// Game management endpoints
 		games := v1.Group("/games")
 		{

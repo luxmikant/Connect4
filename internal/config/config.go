@@ -16,6 +16,7 @@ type Config struct {
 	Database    DatabaseConfig `mapstructure:"database"`
 	Kafka       KafkaConfig    `mapstructure:"kafka"`
 	Redis       RedisConfig    `mapstructure:"redis"`
+	Supabase    SupabaseConfig `mapstructure:"supabase"`
 }
 
 // ServerConfig holds server configuration
@@ -50,6 +51,13 @@ type RedisConfig struct {
 	URL      string `mapstructure:"url"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
+}
+
+// SupabaseConfig holds Supabase configuration
+type SupabaseConfig struct {
+	URL        string `mapstructure:"url"`
+	ServiceKey string `mapstructure:"service_key"`
+	AnonKey    string `mapstructure:"anon_key"`
 }
 
 // Load loads configuration from environment variables and config files
@@ -96,6 +104,10 @@ func Load() (*Config, error) {
 	viper.BindEnv("redis.url", "REDIS_URL")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
 	viper.BindEnv("redis.db", "REDIS_DB")
+
+	viper.BindEnv("supabase.url", "SUPABASE_URL")
+	viper.BindEnv("supabase.service_key", "SUPABASE_SERVICE_KEY")
+	viper.BindEnv("supabase.anon_key", "SUPABASE_ANON_KEY")
 
 	viper.BindEnv("server.port", "SERVER_PORT")
 	viper.BindEnv("server.host", "SERVER_HOST")
@@ -146,6 +158,11 @@ func setDefaults() {
 	viper.SetDefault("redis.url", "localhost:6379")
 	viper.SetDefault("redis.password", "")
 	viper.SetDefault("redis.db", 0)
+
+	// Supabase defaults (these should be overridden in production)
+	viper.SetDefault("supabase.url", "")
+	viper.SetDefault("supabase.service_key", "")
+	viper.SetDefault("supabase.anon_key", "")
 }
 
 // validate validates the configuration

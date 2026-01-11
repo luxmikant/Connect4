@@ -15,6 +15,7 @@ import (
 	"connect4-multiplayer/internal/analytics"
 	"connect4-multiplayer/internal/api/handlers"
 	"connect4-multiplayer/internal/api/routes"
+	"connect4-multiplayer/internal/auth"
 	"connect4-multiplayer/internal/config"
 	"connect4-multiplayer/internal/database"
 	"connect4-multiplayer/internal/game"
@@ -94,6 +95,10 @@ func main() {
 	gameHandler := handlers.NewGameHandler(gameService)
 	leaderboardHandler := handlers.NewLeaderboardHandler(repoManager.PlayerStats)
 
+	// Initialize Supabase Auth and Auth Handler
+	supabaseAuth := auth.NewSupabaseAuth(cfg.Supabase.URL, cfg.Supabase.ServiceKey)
+	authHandler := handlers.NewAuthHandler(supabaseAuth)
+
 	// Set Gin mode based on environment
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -103,7 +108,7 @@ func main() {
 	router := gin.New()
 
 	// Setup routes and middleware
-	routes.SetupRoutes(router, cfg, gameHandler, leaderboardHandler, wsService.GetWebSocketHandler())
+	routes.SetupRoutes(router, cfg, gameHandler, leaderboardHandler, authHandler, wsService.GetWebSocketHandler(), supabaseAuth)
 
 	// Create HTTP server
 	srv := &http.Server{
