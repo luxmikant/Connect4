@@ -43,7 +43,7 @@ func main() {
 	defer cancel()
 
 	fmt.Println("\n📤 Test 2: Sending Test Events...")
-	
+
 	// Send different types of events
 	testEvents := []struct {
 		name string
@@ -56,7 +56,7 @@ func main() {
 			},
 		},
 		{
-			name: "Game Started Event", 
+			name: "Game Started Event",
 			fn: func() error {
 				return producer.SendGameStarted(ctx, "test-game-123", "player1", "player2")
 			},
@@ -64,13 +64,13 @@ func main() {
 		{
 			name: "Move Event",
 			fn: func() error {
-				return producer.SendMoveEvent(ctx, "test-game-123", "player1", 3, 0)
+				return producer.SendMoveMade(ctx, "test-game-123", "player1", 3, 0, 1)
 			},
 		},
 		{
 			name: "Game Completed Event",
 			fn: func() error {
-				return producer.SendGameCompleted(ctx, "test-game-123", "player1", "player2")
+				return producer.SendGameCompleted(ctx, "test-game-123", "player1", "player2", 5*time.Minute)
 			},
 		},
 	}
@@ -78,11 +78,11 @@ func main() {
 	successCount := 0
 	for i, test := range testEvents {
 		fmt.Printf("   %d. Sending %s... ", i+1, test.name)
-		
+
 		start := time.Now()
 		err := test.fn()
 		duration := time.Since(start)
-		
+
 		if err != nil {
 			fmt.Printf("❌ FAILED (%v)\n", err)
 		} else {
@@ -94,17 +94,17 @@ func main() {
 	// Test 3: Performance Test
 	fmt.Println("\n⚡ Test 3: Performance Test (10 rapid events)...")
 	start := time.Now()
-	
+
 	for i := 0; i < 10; i++ {
 		err := producer.SendPlayerJoined(ctx, fmt.Sprintf("perf-test-%d", i), "perf-player")
 		if err != nil {
 			fmt.Printf("❌ Event %d failed: %v\n", i+1, err)
 		}
 	}
-	
+
 	totalDuration := time.Since(start)
 	avgDuration := totalDuration / 10
-	
+
 	fmt.Printf("✅ Sent 10 events in %v (avg: %v per event)\n", totalDuration, avgDuration)
 
 	// Close producer
@@ -116,7 +116,7 @@ func main() {
 	fmt.Printf("✅ Producer Creation: SUCCESS\n")
 	fmt.Printf("✅ Events Sent: %d/%d\n", successCount, len(testEvents))
 	fmt.Printf("✅ Performance: %v avg per event\n", avgDuration)
-	
+
 	if successCount == len(testEvents) {
 		fmt.Println("\n🎉 ALL TESTS PASSED - Kafka Cloud is working perfectly!")
 		fmt.Println("Your Confluent Cloud connection is ready for production.")

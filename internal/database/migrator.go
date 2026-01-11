@@ -37,6 +37,7 @@ func (m *Migrator) Up() error {
 		&models.Move{},
 		&models.PlayerStats{},
 		&models.GameEvent{},
+		&models.AnalyticsSnapshot{},
 	); err != nil {
 		return fmt.Errorf("failed to run auto-migrations: %w", err)
 	}
@@ -47,7 +48,7 @@ func (m *Migrator) Up() error {
 // runSQLMigrations runs SQL migration files from the migrations directory
 func (m *Migrator) runSQLMigrations() error {
 	migrationsDir := "migrations"
-	
+
 	// Check if migrations directory exists
 	if _, err := os.Stat(migrationsDir); os.IsNotExist(err) {
 		// No migrations directory, skip SQL migrations
@@ -123,9 +124,9 @@ func (m *Migrator) Down() error {
 func (m *Migrator) createIndexes() error {
 	// This method is kept for any additional indexes that might be needed
 	// beyond what's defined in the SQL migration files
-	
+
 	// Example: Create any additional composite indexes if needed
 	// Most indexes are now handled in the SQL migration files
-	
+
 	return nil
 }

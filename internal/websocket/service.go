@@ -2,28 +2,31 @@ package websocket
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"connect4-multiplayer/internal/game"
+	"connect4-multiplayer/internal/matchmaking"
 )
 
 // Service represents the WebSocket service
 type Service struct {
-	hub           *Hub
-	messageHandler *GameMessageHandler
-	wsHandler     *WebSocketHandler
-	config        ConnectionConfig
+	hub                *Hub
+	messageHandler     *GameMessageHandler
+	wsHandler          *WebSocketHandler
+	matchmakingService matchmaking.MatchmakingService
+	config             ConnectionConfig
 }
 
 // NewService creates a new WebSocket service
-func NewService(gameService game.GameService) *Service {
+func NewService(gameService game.GameService, matchmakingService matchmaking.MatchmakingService) *Service {
 	config := DefaultConnectionConfig()
 	
 	// Create hub first
 	hub := NewHub(nil, config) // messageHandler will be set later
 	
-	// Create message handler
-	messageHandler := NewGameMessageHandler(gameService, hub)
+	// Create message handler with matchmaking service
+	messageHandler := NewGameMessageHandler(gameService, matchmakingService, hub)
 	
 	// Set message handler in hub
 	hub.messageHandler = messageHandler
@@ -32,16 +35,22 @@ func NewService(gameService game.GameService) *Service {
 	wsHandler := NewWebSocketHandler(hub, config)
 	
 	return &Service{
-		hub:           hub,
-		messageHandler: messageHandler,
-		wsHandler:     wsHandler,
-		config:        config,
+		hub:                hub,
+		messageHandler:     messageHandler,
+		wsHandler:          wsHandler,
+		matchmakingService: matchmakingService,
+		config:             config,
 	}
 }
 
 // Start starts the WebSocket service
 func (s *Service) Start(ctx context.Context) error {
 	log.Println("Starting WebSocket service...")
+	
+	// Start matchmaking service
+	if err := s.matchmakingService.StartMatchmaking(ctx); err != nil {
+		return fmt.Errorf("failed to start matchmaking service: %w", err)
+	}
 	
 	// Start the hub in a goroutine
 	go s.hub.Run()
@@ -53,6 +62,9 @@ func (s *Service) Start(ctx context.Context) error {
 // Stop stops the WebSocket service
 func (s *Service) Stop() error {
 	log.Println("Stopping WebSocket service...")
+	
+	// Stop matchmaking service
+	s.matchmakingService.StopMatchmaking()
 	
 	s.hub.Shutdown()
 	

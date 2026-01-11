@@ -10,6 +10,8 @@ type MessageType string
 
 const (
 	// Client to Server messages
+	MessageTypeJoinQueue   MessageType = "join_queue"    // New: Join matchmaking queue
+	MessageTypeLeaveQueue  MessageType = "leave_queue"   // New: Leave matchmaking queue
 	MessageTypeJoinGame    MessageType = "join_game"
 	MessageTypeMakeMove    MessageType = "make_move"
 	MessageTypeReconnect   MessageType = "reconnect"
@@ -17,14 +19,17 @@ const (
 	MessageTypePing        MessageType = "ping"
 
 	// Server to Client messages
-	MessageTypeGameStarted MessageType = "game_started"
-	MessageTypeMoveMade    MessageType = "move_made"
-	MessageTypeGameEnded   MessageType = "game_ended"
-	MessageTypeGameState   MessageType = "game_state"
-	MessageTypePlayerJoined MessageType = "player_joined"
-	MessageTypePlayerLeft  MessageType = "player_left"
-	MessageTypeError       MessageType = "error"
-	MessageTypePong        MessageType = "pong"
+	MessageTypeQueueJoined    MessageType = "queue_joined"    // New: Joined matchmaking queue
+	MessageTypeQueueStatus    MessageType = "queue_status"    // New: Queue status update
+	MessageTypeMatchFound     MessageType = "match_found"     // New: Match found notification
+	MessageTypeGameStarted    MessageType = "game_started"
+	MessageTypeMoveMade       MessageType = "move_made"
+	MessageTypeGameEnded      MessageType = "game_ended"
+	MessageTypeGameState      MessageType = "game_state"
+	MessageTypePlayerJoined   MessageType = "player_joined"
+	MessageTypePlayerLeft     MessageType = "player_left"
+	MessageTypeError          MessageType = "error"
+	MessageTypePong           MessageType = "pong"
 )
 
 // Message represents a WebSocket message
@@ -53,6 +58,32 @@ func FromJSON(data []byte) (*Message, error) {
 	var msg Message
 	err := json.Unmarshal(data, &msg)
 	return &msg, err
+}
+
+// JoinQueuePayload represents the payload for joining matchmaking queue
+type JoinQueuePayload struct {
+	Username string `json:"username"`
+}
+
+// QueueJoinedPayload represents the payload when successfully joined queue
+type QueueJoinedPayload struct {
+	Position      int    `json:"position"`
+	EstimatedWait string `json:"estimatedWait"`
+}
+
+// QueueStatusPayload represents the current queue status
+type QueueStatusPayload struct {
+	InQueue       bool   `json:"inQueue"`
+	Position      int    `json:"position"`
+	WaitTime      string `json:"waitTime"`
+	TimeRemaining string `json:"timeRemaining"`
+}
+
+// MatchFoundPayload represents when a match is found
+type MatchFoundPayload struct {
+	GameID   string `json:"gameId"`
+	Opponent string `json:"opponent"`
+	IsBot    bool   `json:"isBot"`
 }
 
 // JoinGamePayload represents the payload for joining a game
@@ -136,6 +167,45 @@ type ErrorPayload struct {
 }
 
 // Helper functions to create specific message types
+
+// CreateJoinQueueMessage creates a join queue message
+func CreateJoinQueueMessage(username string) *Message {
+	return NewMessage(MessageTypeJoinQueue, map[string]interface{}{
+		"username": username,
+	})
+}
+
+// CreateLeaveQueueMessage creates a leave queue message
+func CreateLeaveQueueMessage() *Message {
+	return NewMessage(MessageTypeLeaveQueue, map[string]interface{}{})
+}
+
+// CreateQueueJoinedMessage creates a queue joined message
+func CreateQueueJoinedMessage(position int, estimatedWait string) *Message {
+	return NewMessage(MessageTypeQueueJoined, map[string]interface{}{
+		"position":      position,
+		"estimatedWait": estimatedWait,
+	})
+}
+
+// CreateQueueStatusMessage creates a queue status message
+func CreateQueueStatusMessage(inQueue bool, position int, waitTime, timeRemaining string) *Message {
+	return NewMessage(MessageTypeQueueStatus, map[string]interface{}{
+		"inQueue":       inQueue,
+		"position":      position,
+		"waitTime":      waitTime,
+		"timeRemaining": timeRemaining,
+	})
+}
+
+// CreateMatchFoundMessage creates a match found message
+func CreateMatchFoundMessage(gameID, opponent string, isBot bool) *Message {
+	return NewMessage(MessageTypeMatchFound, map[string]interface{}{
+		"gameId":   gameID,
+		"opponent": opponent,
+		"isBot":    isBot,
+	})
+}
 
 // CreateJoinGameMessage creates a join game message
 func CreateJoinGameMessage(username, gameType string) *Message {

@@ -17,6 +17,7 @@ import (
 	"connect4-multiplayer/internal/config"
 	"connect4-multiplayer/internal/database"
 	"connect4-multiplayer/internal/game"
+	"connect4-multiplayer/internal/matchmaking"
 	"connect4-multiplayer/internal/websocket"
 )
 
@@ -56,8 +57,14 @@ func main() {
 		game.DefaultServiceConfig(),
 	)
 
+	// Initialize matchmaking service
+	matchmakingService := matchmaking.NewMatchmakingService(
+		gameService,
+		matchmaking.DefaultServiceConfig(),
+	)
+
 	// Initialize WebSocket service
-	wsService := websocket.NewService(gameService)
+	wsService := websocket.NewService(gameService, matchmakingService)
 	
 	// Start WebSocket service
 	ctx := context.Background()

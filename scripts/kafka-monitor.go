@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"connect4-multiplayer/internal/config"
 	"connect4-multiplayer/internal/analytics"
+	"connect4-multiplayer/internal/config"
 	"connect4-multiplayer/pkg/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 type KafkaMonitor struct {
@@ -21,7 +21,7 @@ type KafkaMonitor struct {
 
 func main() {
 	fmt.Println("🖥️  Starting Kafka Monitor Web Interface...")
-	
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -30,7 +30,7 @@ func main() {
 
 	// Create producer for sending test messages
 	producer := analytics.NewProducer(cfg.Kafka)
-	
+
 	monitor := &KafkaMonitor{
 		producer: producer,
 		messages: make([]models.GameEvent, 0),
@@ -48,7 +48,7 @@ func main() {
 	fmt.Println("🌐 Kafka Monitor running at: http://localhost:8081")
 	fmt.Println("📊 Open your browser to monitor Kafka messages")
 	fmt.Println("🔧 Use the interface to send test messages to Confluent Cloud")
-	
+
 	log.Fatal(http.ListenAndServe(":8081", r))
 }
 
@@ -167,7 +167,7 @@ func (m *KafkaMonitor) sendTestMessage(c *gin.Context) {
 	var request struct {
 		Type string `json:"type"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(400, gin.H{"success": false, "error": err.Error()})
 		return
@@ -178,7 +178,7 @@ func (m *KafkaMonitor) sendTestMessage(c *gin.Context) {
 	var event *models.GameEvent
 
 	gameID := fmt.Sprintf("monitor-test-%d", time.Now().Unix())
-	
+
 	switch request.Type {
 	case "player_joined":
 		err = m.producer.SendPlayerJoined(ctx, gameID, "monitor-player")
@@ -197,7 +197,7 @@ func (m *KafkaMonitor) sendTestMessage(c *gin.Context) {
 			Timestamp: time.Now(),
 		}
 	case "move_made":
-		err = m.producer.SendMoveEvent(ctx, gameID, "player1", 3, 0)
+		err = m.producer.SendMoveMade(ctx, gameID, "player1", 3, 0, 1)
 		event = &models.GameEvent{
 			EventType: models.EventMoveMade,
 			GameID:    gameID,
@@ -205,7 +205,7 @@ func (m *KafkaMonitor) sendTestMessage(c *gin.Context) {
 			Timestamp: time.Now(),
 		}
 	case "game_completed":
-		err = m.producer.SendGameCompleted(ctx, gameID, "player1", "player2")
+		err = m.producer.SendGameCompleted(ctx, gameID, "player1", "player2", 5*time.Minute)
 		event = &models.GameEvent{
 			EventType: models.EventGameCompleted,
 			GameID:    gameID,
@@ -224,6 +224,6 @@ func (m *KafkaMonitor) sendTestMessage(c *gin.Context) {
 
 	// Store message for display
 	m.messages = append(m.messages, *event)
-	
+
 	c.JSON(200, gin.H{"success": true, "event": event})
 }

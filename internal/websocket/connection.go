@@ -20,6 +20,7 @@ type Connection struct {
 	hub      *Hub
 	mu       sync.RWMutex
 	lastSeen time.Time
+	closed   bool
 }
 
 // ConnectionConfig holds configuration for WebSocket connections
@@ -73,6 +74,27 @@ func (c *Connection) SetGameID(gameID string) {
 	c.gameID = gameID
 }
 
+// SetUserID sets the user ID for this connection
+func (c *Connection) SetUserID(userID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.userID = userID
+}
+
+// IsClosed returns whether the connection is closed
+func (c *Connection) IsClosed() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.closed
+}
+
+// setClosed marks the connection as closed (internal use)
+func (c *Connection) setClosed() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.closed = true
+}
+
 // UpdateLastSeen updates the last seen timestamp
 func (c *Connection) UpdateLastSeen() {
 	c.mu.Lock()
@@ -100,6 +122,7 @@ func (c *Connection) SendMessage(message []byte) {
 // readPump handles reading messages from the WebSocket connection
 func (c *Connection) readPump(config ConnectionConfig) {
 	defer func() {
+		c.setClosed()
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
@@ -140,6 +163,7 @@ func (c *Connection) writePump(config ConnectionConfig) {
 	ticker := time.NewTicker(config.PingPeriod)
 	defer func() {
 		ticker.Stop()
+		c.setClosed()
 		c.conn.Close()
 	}()
 

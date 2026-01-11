@@ -10,26 +10,39 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"connect4-multiplayer/internal/game"
+	"connect4-multiplayer/internal/matchmaking"
 	"connect4-multiplayer/pkg/models"
 )
 
 // GameMessageHandler handles WebSocket messages related to game operations
 type GameMessageHandler struct {
-	gameService game.GameService
-	hub         *Hub
+	gameService       game.GameService
+	matchmakingService matchmaking.MatchmakingService
+	hub               *Hub
 }
 
 // NewGameMessageHandler creates a new game message handler
-func NewGameMessageHandler(gameService game.GameService, hub *Hub) *GameMessageHandler {
-	return &GameMessageHandler{
-		gameService: gameService,
-		hub:         hub,
+func NewGameMessageHandler(gameService game.GameService, matchmakingService matchmaking.MatchmakingService, hub *Hub) *GameMessageHandler {
+	handler := &GameMessageHandler{
+		gameService:        gameService,
+		matchmakingService: matchmakingService,
+		hub:                hub,
 	}
+	
+	// Set up matchmaking callbacks
+	matchmakingService.SetGameCreatedCallback(handler.onGameCreated)
+	matchmakingService.SetBotGameCallback(handler.onBotGameCreated)
+	
+	return handler
 }
 
 // HandleMessage processes incoming WebSocket messages
 func (h *GameMessageHandler) HandleMessage(ctx context.Context, conn *Connection, message *Message) error {
 	switch message.Type {
+	case MessageTypeJoinQueue:
+		return h.handleJoinQueue(ctx, conn, message)
+	case MessageTypeLeaveQueue:
+		return h.handleLeaveQueue(ctx, conn, message)
 	case MessageTypeJoinGame:
 		return h.handleJoinGame(ctx, conn, message)
 	case MessageTypeMakeMove:
@@ -45,7 +58,206 @@ func (h *GameMessageHandler) HandleMessage(ctx context.Context, conn *Connection
 	}
 }
 
-// handleJoinGame processes join game requests
+// handleJoinQueue processes join queue requests
+func (h *GameMessageHandler) handleJoinQueue(ctx context.Context, conn *Connection, message *Message) error {
+	username, ok := message.Payload["username"].(string)
+	if !ok || username == "" {
+		return fmt.Errorf("invalid username")
+	}
+
+	log.Printf("Player %s joining matchmaking queue", username)
+
+	// Update connection with username
+	conn.SetUserID(username)
+
+	// Join matchmaking queue
+	entry, err := h.matchmakingService.JoinQueue(ctx, username)
+	if err != nil {
+		return fmt.Errorf("failed to join queue: %w", err)
+	}
+
+	// Send queue joined confirmation
+	estimatedWait := fmt.Sprintf("%ds", int(entry.Timeout.Sub(entry.JoinedAt).Seconds()))
+	queueJoinedMsg := CreateQueueJoinedMessage(1, estimatedWait) // Position will be updated by status updates
+	
+	data, err := queueJoinedMsg.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to serialize queue joined message: %w", err)
+	}
+
+	conn.SendMessage(data)
+
+	// Start sending periodic queue status updates
+	go h.sendQueueStatusUpdates(ctx, conn, username)
+
+	return nil
+}
+
+// handleLeaveQueue processes leave queue requests
+func (h *GameMessageHandler) handleLeaveQueue(ctx context.Context, conn *Connection, message *Message) error {
+	username := conn.GetUserID()
+	if username == "" {
+		return fmt.Errorf("no username set")
+	}
+
+	log.Printf("Player %s leaving matchmaking queue", username)
+
+	// Leave matchmaking queue
+	err := h.matchmakingService.LeaveQueue(ctx, username)
+	if err != nil {
+		return fmt.Errorf("failed to leave queue: %w", err)
+	}
+
+	// Send queue status update (not in queue)
+	queueStatusMsg := CreateQueueStatusMessage(false, 0, "0s", "0s")
+	data, err := queueStatusMsg.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to serialize queue status message: %w", err)
+	}
+
+	conn.SendMessage(data)
+	return nil
+}
+
+// sendQueueStatusUpdates sends periodic queue status updates to a player
+func (h *GameMessageHandler) sendQueueStatusUpdates(ctx context.Context, conn *Connection, username string) {
+	ticker := time.NewTicker(2 * time.Second) // Update every 2 seconds
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Check if connection is still active
+			if conn.IsClosed() {
+				return
+			}
+
+			// Get queue status
+			status, err := h.matchmakingService.GetQueueStatus(ctx, username)
+			if err != nil || !status.InQueue {
+				// Player no longer in queue, stop updates
+				return
+			}
+
+			// Send status update
+			waitTime := fmt.Sprintf("%.0fs", status.WaitTime.Seconds())
+			timeRemaining := fmt.Sprintf("%.0fs", status.TimeRemaining.Seconds())
+			
+			queueStatusMsg := CreateQueueStatusMessage(
+				status.InQueue,
+				status.Position,
+				waitTime,
+				timeRemaining,
+			)
+
+			data, err := queueStatusMsg.ToJSON()
+			if err != nil {
+				log.Printf("Failed to serialize queue status message: %v", err)
+				continue
+			}
+
+			conn.SendMessage(data)
+		}
+	}
+}
+
+// onGameCreated is called when a player vs player game is created
+func (h *GameMessageHandler) onGameCreated(ctx context.Context, player1, player2 string, gameSession *models.GameSession) error {
+	log.Printf("Game created: %s vs %s (Game ID: %s)", player1, player2, gameSession.ID)
+
+	// Notify both players that a match was found
+	h.notifyMatchFound(player1, gameSession.ID, player2, false)
+	h.notifyMatchFound(player2, gameSession.ID, player1, false)
+
+	// Send game started messages to both players
+	h.notifyGameStarted(ctx, player1, gameSession)
+	h.notifyGameStarted(ctx, player2, gameSession)
+
+	return nil
+}
+
+// onBotGameCreated is called when a player vs bot game is created
+func (h *GameMessageHandler) onBotGameCreated(ctx context.Context, player string, gameSession *models.GameSession) error {
+	log.Printf("Bot game created: %s vs %s (Game ID: %s)", player, gameSession.Player2, gameSession.ID)
+
+	// Notify player that a bot match was found
+	h.notifyMatchFound(player, gameSession.ID, gameSession.Player2, true)
+
+	// Send game started message to player
+	h.notifyGameStarted(ctx, player, gameSession)
+
+	return nil
+}
+
+// notifyMatchFound sends a match found notification to a player
+func (h *GameMessageHandler) notifyMatchFound(username, gameID, opponent string, isBot bool) {
+	// Find connection for the player
+	conn, exists := h.hub.GetConnection(username)
+	if !exists {
+		log.Printf("Connection not found for player %s", username)
+		return
+	}
+
+	matchFoundMsg := CreateMatchFoundMessage(gameID, opponent, isBot)
+	data, err := matchFoundMsg.ToJSON()
+	if err != nil {
+		log.Printf("Failed to serialize match found message: %v", err)
+		return
+	}
+
+	conn.SendMessage(data)
+}
+
+// notifyGameStarted sends a game started notification to a player
+func (h *GameMessageHandler) notifyGameStarted(ctx context.Context, username string, gameSession *models.GameSession) {
+	// Find connection for the player
+	conn, exists := h.hub.GetConnection(username)
+	if !exists {
+		log.Printf("Connection not found for player %s", username)
+		return
+	}
+
+	// Update connection with game ID
+	conn.SetGameID(gameSession.ID)
+
+	// Add connection to game room
+	h.hub.mu.Lock()
+	h.hub.addToGameRoom(conn)
+	h.hub.mu.Unlock()
+
+	// Determine opponent and colors
+	var opponent string
+	if gameSession.Player1 == username {
+		opponent = gameSession.Player2
+	} else {
+		opponent = gameSession.Player1
+	}
+
+	isBot := opponent[:4] == "bot_" || opponent == "Bot"
+	yourColor := string(gameSession.GetPlayerColor(username))
+	currentTurn := string(gameSession.CurrentTurn)
+
+	gameStartedMsg := CreateGameStartedMessage(
+		gameSession.ID,
+		opponent,
+		yourColor,
+		currentTurn,
+		isBot,
+	)
+
+	data, err := gameStartedMsg.ToJSON()
+	if err != nil {
+		log.Printf("Failed to serialize game started message: %v", err)
+		return
+	}
+
+	conn.SendMessage(data)
+
+	// Send initial game state
+	h.sendGameState(ctx, conn, gameSession.ID)
+}
 func (h *GameMessageHandler) handleJoinGame(ctx context.Context, conn *Connection, message *Message) error {
 	username, ok := message.Payload["username"].(string)
 	if !ok || username == "" {

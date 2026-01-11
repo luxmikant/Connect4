@@ -47,14 +47,43 @@ func (ps *PlayerStats) UpdateGameStats(won bool, gameDuration int) {
 	if won {
 		ps.GamesWon++
 	}
-	
+
 	// Update average game time
 	if ps.AvgGameTime == 0 {
 		ps.AvgGameTime = gameDuration
 	} else {
 		ps.AvgGameTime = (ps.AvgGameTime*(ps.GamesPlayed-1) + gameDuration) / ps.GamesPlayed
 	}
-	
+
 	ps.CalculateWinRate()
 	ps.LastPlayed = time.Now()
+}
+
+// AnalyticsSnapshot represents a point-in-time snapshot of game analytics metrics
+// Used by the analytics service to persist aggregated metrics (Requirement 10.5)
+type AnalyticsSnapshot struct {
+	ID                 string    `json:"id" gorm:"primaryKey"`
+	Timestamp          time.Time `json:"timestamp" gorm:"autoCreateTime;index"`
+	GamesCompletedHour int64     `json:"gamesCompletedHour" gorm:"default:0"`
+	GamesCompletedDay  int64     `json:"gamesCompletedDay" gorm:"default:0"`
+	AvgGameDurationSec int64     `json:"avgGameDurationSec" gorm:"default:0"`
+	MinGameDurationSec int64     `json:"minGameDurationSec" gorm:"default:0"`
+	MaxGameDurationSec int64     `json:"maxGameDurationSec" gorm:"default:0"`
+	TotalMoves         int64     `json:"totalMoves" gorm:"default:0"`
+	UniquePlayersHour  int64     `json:"uniquePlayersHour" gorm:"default:0"`
+	ActiveGames        int64     `json:"activeGames" gorm:"default:0"`
+	CreatedAt          time.Time `json:"createdAt" gorm:"autoCreateTime"`
+}
+
+// TableName returns the table name for GORM
+func (AnalyticsSnapshot) TableName() string {
+	return "analytics_snapshots"
+}
+
+// BeforeCreate is a GORM hook that runs before creating an analytics snapshot
+func (as *AnalyticsSnapshot) BeforeCreate(tx *gorm.DB) error {
+	if as.ID == "" {
+		as.ID = generateUUID()
+	}
+	return nil
 }
