@@ -13,10 +13,10 @@ class WebSocketService {
 
   constructor(baseUrl?: string) {
     // baseUrl should be just the domain (e.g., wss://example.com), not include /ws path
-    // Use ws:// for localhost, wss:// for production
+    // Use ws:// for localhost, wss:// for production backend on Render
     const defaultUrl = window.location.hostname === 'localhost' 
       ? 'ws://localhost:8080'
-      : `wss://${window.location.host}`;
+      : 'wss://connect4-server-qgi9.onrender.com';
     this.baseUrl = baseUrl || import.meta.env.VITE_WS_URL || defaultUrl;
   }
 

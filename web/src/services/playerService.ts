@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Use relative path in production (Vercel rewrites handle it), absolute URL in development
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:8080');
 
 export interface Player {
   id: string;

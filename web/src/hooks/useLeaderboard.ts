@@ -21,7 +21,9 @@ export const useLeaderboard = () => {
     const fetchLeaderboard = async () => {
       try {
         setLoading(true);
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+        // Use relative path in production (Vercel rewrites handle it)
+        const apiUrl = import.meta.env.VITE_API_URL || 
+          (import.meta.env.MODE === 'production' ? '' : 'http://localhost:8080');
         const response = await fetch(`${apiUrl}/api/v1/leaderboard`);
         if (!response.ok) {
           throw new Error('Failed to fetch leaderboard');
