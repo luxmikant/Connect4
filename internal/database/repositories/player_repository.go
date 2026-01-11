@@ -134,19 +134,19 @@ func (r *playerRepository) UpsertFromProfile(ctx context.Context, authUserID, us
 	// First, try to find existing player by auth_user_id
 	var existingPlayer models.Player
 	err := r.db.WithContext(ctx).First(&existingPlayer, "auth_user_id = ?", authUserID).Error
-	
+
 	if err == nil {
 		// Player exists, update it
 		existingPlayer.Username = username
 		existingPlayer.IsGuest = false
 		existingPlayer.UpdatedAt = time.Now()
-		
+
 		if err := r.db.WithContext(ctx).Save(&existingPlayer).Error; err != nil {
 			return "", fmt.Errorf("failed to update player: %w", err)
 		}
 		return existingPlayer.ID, nil
 	}
-	
+
 	if err != gorm.ErrRecordNotFound {
 		return "", fmt.Errorf("failed to query player: %w", err)
 	}
