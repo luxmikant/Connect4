@@ -308,6 +308,11 @@ var ErrProducerUnhealthy = errors.New("producer is unhealthy")
 
 // SendEvent sends a game event to Kafka with retry logic and circuit breaker
 func (p *Producer) SendEvent(ctx context.Context, event *models.GameEvent) error {
+	// If producer is not initialized (no Kafka credentials), skip silently
+	if p.writer == nil {
+		return nil
+	}
+
 	// Check circuit breaker
 	if !p.config.CircuitBreaker.AllowRequest() {
 		p.eventsFailed.Add(1)

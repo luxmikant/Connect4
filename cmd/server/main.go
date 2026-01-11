@@ -61,8 +61,15 @@ func main() {
 	}
 
 	// Initialize Kafka analytics producer (Requirement 9)
-	analyticsProducer := analytics.NewProducer(cfg.Kafka)
-	log.Printf("Analytics producer initialized for Kafka topic: %s", cfg.Kafka.Topic)
+	// Skip Kafka if credentials are not configured
+	var analyticsProducer *analytics.Producer
+	if cfg.Kafka.APIKey != "" && cfg.Kafka.APISecret != "" && cfg.Kafka.BootstrapServers != "" {
+		analyticsProducer = analytics.NewProducer(cfg.Kafka)
+		log.Printf("Analytics producer initialized for Kafka topic: %s", cfg.Kafka.Topic)
+	} else {
+		log.Println("Kafka credentials not configured, analytics disabled")
+		analyticsProducer = &analytics.Producer{} // Empty producer - won't send events
+	}
 
 	// Initialize services with analytics producer
 	serviceConfig := game.DefaultServiceConfig()
