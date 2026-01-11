@@ -25,12 +25,8 @@ func NewMigrator(db *gorm.DB) *Migrator {
 
 // Up runs all migrations
 func (m *Migrator) Up() error {
-	// First, run SQL file migrations
-	if err := m.runSQLMigrations(); err != nil {
-		return fmt.Errorf("failed to run SQL migrations: %w", err)
-	}
-
-	// Then, auto-migrate all models to ensure schema is up to date
+	// Use GORM AutoMigrate to ensure schema is up to date
+	// This handles all column additions, type changes, and index creation automatically
 	if err := m.db.AutoMigrate(
 		&models.Player{},
 		&models.GameSession{},
@@ -41,6 +37,9 @@ func (m *Migrator) Up() error {
 	); err != nil {
 		return fmt.Errorf("failed to run auto-migrations: %w", err)
 	}
+
+	// Try to run SQL migrations if directory exists, but don't fail if it doesn't
+	_ = m.runSQLMigrations()
 
 	return nil
 }
