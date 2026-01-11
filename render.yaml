@@ -15,6 +15,12 @@ services:
         value: release
       - key: DATABASE_URL
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
       - key: KAFKA_BOOTSTRAP_SERVERS
         sync: false
       - key: KAFKA_API_KEY
