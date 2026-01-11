@@ -1,0 +1,46 @@
+services:
+  # Main Game Server
+  - type: web
+    name: connect4-server
+    env: go
+    buildCommand: go build -o server ./cmd/server
+    startCommand: ./server
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: connect4-db
+          property: connectionString
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_API_KEY
+        sync: false
+      - key: KAFKA_API_SECRET
+        sync: false
+    healthCheckPath: /health
+    
+  # Analytics Service
+  - type: worker
+    name: connect4-analytics
+    env: go
+    buildCommand: go build -o analytics ./cmd/analytics
+    startCommand: ./analytics
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: connect4-db
+          property: connectionString
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_API_KEY
+        sync: false
+      - key: KAFKA_API_SECRET
+        sync: false
+
+databases:
+  - name: connect4-db
+    databaseName: connect4
+    user: connect4_user
