@@ -183,15 +183,20 @@ func (c *Connection) writePump(config ConnectionConfig) {
 			}
 			w.Write(message)
 
-			// Add queued messages to the current WebSocket message
-			n := len(c.send)
-			for i := 0; i < n; i++ {
-				w.Write([]byte{'\n'})
-				w.Write(<-c.send)
-			}
-
 			if err := w.Close(); err != nil {
 				return
+			}
+
+			// Send any additional queued messages separately
+			// This ensures each JSON message is sent independently
+			// instead of concatenating them with newlines
+			n := len(c.send)
+			for i := 0; i < n; i++ {
+				c.conn.SetWriteDeadline(time.Now().Add(config.WriteWait))
+				nextMsg := <-c.send
+				if err := c.conn.WriteMessage(websocket.TextMessage, nextMsg); err != nil {
+					return
+				}
 			}
 
 		case <-ticker.C:
