@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Cpu, Globe, ArrowRight, Trophy } from 'lucide-react';
+import { User, Cpu, Globe, ArrowRight, Trophy, Users, Link as LinkIcon } from 'lucide-react';
 import { usePlayer } from '../hooks/usePlayer';
 import { useAuth } from '../contexts/AuthContext';
+import { getOrCreatePlayer } from '../services/playerService';
 import { cn } from '../lib/utils';
 
 export const Lobby: React.FC = () => {
     const [name, setName] = useState('');
-    const [gameMode, setGameMode] = useState<'matchmaking' | 'bot'>('matchmaking');
+    const [gameMode, setGameMode] = useState<'matchmaking' | 'bot' | 'custom'>('matchmaking');
+    const [customRoomAction, setCustomRoomAction] = useState<'create' | 'join'>('create');
+    const [roomCode, setRoomCode] = useState('');
+    const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
     const { setUsername } = usePlayer();
-    const { profile } = useAuth();
+    const { user, profile } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -19,11 +23,52 @@ export const Lobby: React.FC = () => {
         }
     }, [profile]);
 
-    const handleJoin = () => {
-        if (name.trim()) {
+    const handleJoin = async () => {
+        if (!name.trim()) return;
+
+        // Validate room code if joining custom room
+        if (gameMode === 'custom' && customRoomAction === 'join' && !roomCode.trim()) {
+            return;
+        }
+
+        setIsCreatingPlayer(true);
+        
+        try {
+            // If user is authenticated, link their player account
+            if (user && profile?.username) {
+                await getOrCreatePlayer();
+            }
+            
             setUsername(name.trim());
             localStorage.setItem('connect4_gameMode', gameMode);
-            navigate('/game');
+            
+            // For custom room join, navigate with room code as query param
+            if (gameMode === 'custom' && customRoomAction === 'join' && roomCode.trim()) {
+                localStorage.setItem('connect4_customRoomAction', 'join');
+                navigate(`/game?room=${roomCode.toUpperCase().trim()}`);
+            } else if (gameMode === 'custom' && customRoomAction === 'create') {
+                localStorage.setItem('connect4_customRoomAction', 'create');
+                navigate('/game');
+            } else {
+                navigate('/game');
+            }
+        } catch (error) {
+            console.error('Failed to create player:', error);
+            // Continue anyway for guest users
+            setUsername(name.trim());
+            localStorage.setItem('connect4_gameMode', gameMode);
+            
+            if (gameMode === 'custom' && customRoomAction === 'join' && roomCode.trim()) {
+                localStorage.setItem('connect4_customRoomAction', 'join');
+                navigate(`/game?room=${roomCode.toUpperCase().trim()}`);
+            } else if (gameMode === 'custom' && customRoomAction === 'create') {
+                localStorage.setItem('connect4_customRoomAction', 'create');
+                navigate('/game');
+            } else {
+                navigate('/game');
+            }
+        } finally {
+            setIsCreatingPlayer(false);
         }
     };
 
@@ -83,7 +128,7 @@ export const Lobby: React.FC = () => {
                         {/* Mode Selection */}
                         <div className="space-y-2">
                             <label className="text-xs font-mono text-cyan-400 uppercase tracking-widest pl-1">Battle Mode</label>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-3 gap-3">
                                 <button
                                     onClick={() => setGameMode('matchmaking')}
                                     className={cn(
@@ -94,7 +139,7 @@ export const Lobby: React.FC = () => {
                                     )}
                                 >
                                     <Globe className={cn("w-6 h-6", gameMode === 'matchmaking' ? "text-blue-400" : "text-slate-500")} />
-                                    <span className="text-sm font-bold">ONLINE</span>
+                                    <span className="text-xs font-bold">ONLINE</span>
                                     {gameMode === 'matchmaking' && (
                                         <motion.div layoutId="active-ring" className="absolute inset-0 border-2 border-blue-500 rounded-xl" />
                                     )}
@@ -110,13 +155,85 @@ export const Lobby: React.FC = () => {
                                     )}
                                 >
                                     <Cpu className={cn("w-6 h-6", gameMode === 'bot' ? "text-emerald-400" : "text-slate-500")} />
-                                    <span className="text-sm font-bold">VS AI</span>
+                                    <span className="text-xs font-bold">VS AI</span>
                                     {gameMode === 'bot' && (
                                         <motion.div layoutId="active-ring" className="absolute inset-0 border-2 border-emerald-500 rounded-xl" />
                                     )}
                                 </button>
+
+                                <button
+                                    onClick={() => setGameMode('custom')}
+                                    className={cn(
+                                        "relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-300 gap-2 overflow-hidden",
+                                        gameMode === 'custom' 
+                                            ? "bg-purple-600/20 border-purple-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.2)]" 
+                                            : "bg-slate-800/30 border-slate-700 text-slate-400 hover:bg-slate-800"
+                                    )}
+                                >
+                                    <Users className={cn("w-6 h-6", gameMode === 'custom' ? "text-purple-400" : "text-slate-500")} />
+                                    <span className="text-xs font-bold">FRIEND</span>
+                                    {gameMode === 'custom' && (
+                                        <motion.div layoutId="active-ring" className="absolute inset-0 border-2 border-purple-500 rounded-xl" />
+                                    )}
+                                </button>
                             </div>
                         </div>
+
+                        {/* Custom Room Options */}
+                        <AnimatePresence>
+                            {gameMode === 'custom' && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="space-y-3 overflow-hidden"
+                                >
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => setCustomRoomAction('create')}
+                                            className={cn(
+                                                "py-2 px-3 rounded-lg text-sm font-medium transition-all",
+                                                customRoomAction === 'create'
+                                                    ? "bg-purple-600 text-white"
+                                                    : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                                            )}
+                                        >
+                                            Create Room
+                                        </button>
+                                        <button
+                                            onClick={() => setCustomRoomAction('join')}
+                                            className={cn(
+                                                "py-2 px-3 rounded-lg text-sm font-medium transition-all",
+                                                customRoomAction === 'join'
+                                                    ? "bg-purple-600 text-white"
+                                                    : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                                            )}
+                                        >
+                                            Join Room
+                                        </button>
+                                    </div>
+                                    
+                                    {customRoomAction === 'join' && (
+                                        <motion.div
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            className="relative group"
+                                        >
+                                            <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
+                                            <input
+                                                type="text"
+                                                value={roomCode}
+                                                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                                                onKeyPress={handleKeyPress}
+                                                placeholder="ENTER ROOM CODE..."
+                                                className="w-full bg-slate-800/50 border border-slate-700 text-white pl-12 pr-4 py-3 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-mono placeholder:text-slate-600 uppercase"
+                                                maxLength={8}
+                                            />
+                                        </motion.div>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Description */}
                         <AnimatePresence mode="wait">
@@ -129,7 +246,11 @@ export const Lobby: React.FC = () => {
                             >
                                 {gameMode === 'matchmaking' 
                                     ? 'Global matchmaking system. Auto-fallback to Bot after 10s.' 
-                                    : 'Training simulation against Minimax algorithm.'}
+                                    : gameMode === 'bot'
+                                    ? 'Training simulation against Minimax algorithm.'
+                                    : customRoomAction === 'create'
+                                    ? 'Create a private room and share the code with a friend.'
+                                    : 'Enter your friend\'s room code to join.'}
                             </motion.p>
                         </AnimatePresence>
 
@@ -139,11 +260,24 @@ export const Lobby: React.FC = () => {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={handleJoin}
-                                disabled={!name.trim()}
+                                disabled={!name.trim() || isCreatingPlayer || (gameMode === 'custom' && customRoomAction === 'join' && !roomCode.trim())}
                                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group transition-all"
                             >
-                                <span>INITIALIZE</span>
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                {isCreatingPlayer ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        Initializing...
+                                    </>
+                                ) : (
+                                    <>
+                                        {gameMode === 'custom' && customRoomAction === 'create' 
+                                            ? 'CREATE ROOM'
+                                            : gameMode === 'custom' && customRoomAction === 'join'
+                                            ? 'JOIN ROOM'
+                                            : 'JOIN BATTLE'}
+                                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </>
+                                )}
                             </motion.button>
 
                             <button

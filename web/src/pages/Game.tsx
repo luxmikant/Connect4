@@ -1,14 +1,14 @@
-import React, { useEffect, useRef } from 'react';
-import { Toaster } from 'react-hot-toast';
+import React, { useEffect, useRef, useState } from 'react';
+import { Toaster, toast } from 'react-hot-toast';
 import { GameBoard } from '../components/GameBoard';
 import { useGame } from '../hooks/useGame';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { wsService } from '../services/websocket';
 import { MessageType } from '../types/websocket';
 import { usePlayer } from '../hooks/usePlayer';
 import { useGameSound } from '../hooks/useGameSound';
 import confetti from 'canvas-confetti';
-import { Loader2, ArrowLeft, Users, Cpu } from 'lucide-react';
+import { Loader2, ArrowLeft, Users, Cpu, Copy, Check, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 
@@ -17,19 +17,66 @@ export const Game: React.FC = () => {
   const { username } = usePlayer();
   const { playSound } = useGameSound();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const hasJoinedRef = useRef(false);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [roomUrl, setRoomUrl] = useState<string | null>(null);
+  const [isWaitingForOpponent, setIsWaitingForOpponent] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   // Get game mode from localStorage
   const gameMode = localStorage.getItem('connect4_gameMode') || 'matchmaking';
+  const customRoomAction = localStorage.getItem('connect4_customRoomAction');
+  const roomCodeParam = searchParams.get('room');
 
-  // Join queue/bot game once WebSocket is connected
+  // Subscribe to custom room messages
+  useEffect(() => {
+    const handleRoomCreated = (message: any) => {
+      const { roomCode: code, roomUrl: url } = message.payload;
+      setRoomCode(code);
+      setRoomUrl(url);
+      setIsWaitingForOpponent(true);
+      playSound('click');
+      toast.success(`Room created! Code: ${code}`, { duration: 5000 });
+    };
+
+    const handleWaitingForOpponent = (message: any) => {
+      setIsWaitingForOpponent(true);
+    };
+
+    const handleGameStarted = (message: any) => {
+      setIsWaitingForOpponent(false);
+      playSound('start');
+    };
+
+    wsService.subscribe(MessageType.RoomCreated, handleRoomCreated);
+    wsService.subscribe(MessageType.WaitingForOpponent, handleWaitingForOpponent);
+    wsService.subscribe(MessageType.GameStarted, handleGameStarted);
+
+    return () => {
+      wsService.unsubscribe(MessageType.RoomCreated, handleRoomCreated);
+      wsService.unsubscribe(MessageType.WaitingForOpponent, handleWaitingForOpponent);
+      wsService.unsubscribe(MessageType.GameStarted, handleGameStarted);
+    };
+  }, [playSound]);
+
+  // Join queue/bot game/custom room once WebSocket is connected
   useEffect(() => {
     // wait for connection before checking
     const checkInterval = setInterval(() => {
        if (wsService.isConnected() && username && !hasJoinedRef.current) {
           hasJoinedRef.current = true;
           clearInterval(checkInterval);
-          if (gameMode === 'bot') {
+          
+          if (gameMode === 'custom') {
+            if (customRoomAction === 'create') {
+              console.log("Creating custom room for:", username);
+              wsService.send(MessageType.CreateCustomRoom, { username });
+            } else if (customRoomAction === 'join' && roomCodeParam) {
+              console.log("Joining custom room:", roomCodeParam, "as:", username);
+              wsService.send(MessageType.JoinCustomRoom, { username, roomCode: roomCodeParam });
+            }
+          } else if (gameMode === 'bot') {
             console.log("Requesting bot game for:", username);
             wsService.send(MessageType.PlayWithBot, { username });
           } else {
@@ -40,7 +87,7 @@ export const Game: React.FC = () => {
     }, 500);
     
     return () => clearInterval(checkInterval);
-  }, [username, gameMode]);
+  }, [username, gameMode, customRoomAction, roomCodeParam]);
 
   // Cleanup when leaving
   useEffect(() => {
@@ -88,7 +135,102 @@ export const Game: React.FC = () => {
     navigate('/lobby');
   };
 
+  const handleCopyRoomCode = async () => {
+    if (!roomCode) return;
+    
+    const fullUrl = `${window.location.origin}/game?room=${roomCode}`;
+    
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      setCopiedCode(true);
+      playSound('click');
+      toast.success('Room code copied!');
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast.error('Failed to copy code');
+    }
+  };
+
+  const handleShareRoom = async () => {
+    if (!roomCode) return;
+    
+    const fullUrl = `${window.location.origin}/game?room=${roomCode}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join my Connect 4 game!',
+          text: `Play Connect 4 with me! Room code: ${roomCode}`,
+          url: fullUrl,
+        });
+        playSound('click');
+      } catch (err) {
+        console.error('Failed to share:', err);
+      }
+    } else {
+      // Fallback to copy
+      handleCopyRoomCode();
+    }
+  };
+
   const getStatusContent = () => {
+    // Waiting for opponent in custom room
+    if (isWaitingForOpponent && roomCode) {
+      return (
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Users className="w-8 h-8 text-purple-400 animate-pulse" />
+            <p className="text-xl font-medium text-slate-300">Waiting for friend to join...</p>
+          </div>
+          
+          <div className="bg-slate-800/50 backdrop-blur-md border border-purple-500/30 rounded-2xl p-6 space-y-4">
+            <div className="text-center">
+              <p className="text-sm text-slate-400 mb-2">Room Code</p>
+              <div className="flex items-center gap-3 justify-center">
+                <code className="text-3xl font-mono font-bold text-purple-400 tracking-widest bg-slate-900/50 px-6 py-3 rounded-xl border border-purple-500/20">
+                  {roomCode}
+                </code>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={handleCopyRoomCode}
+                className="flex-1 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-300 px-4 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+              >
+                {copiedCode ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy Code
+                  </>
+                )}
+              </button>
+              
+              {navigator.share && (
+                <button
+                  onClick={handleShareRoom}
+                  className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-300 px-4 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share
+                </button>
+              )}
+            </div>
+            
+            <p className="text-xs text-slate-500 text-center">
+              Share this code with your friend to start playing!
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
     if (queueStatus?.inQueue) {
       return (
         <div className="flex flex-col items-center gap-2">

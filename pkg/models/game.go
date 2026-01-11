@@ -20,18 +20,22 @@ const (
 
 // GameSession represents a Connect 4 game session
 type GameSession struct {
-	ID          string     `json:"id" gorm:"primaryKey" validate:"required"`
-	Player1     string     `json:"player1" gorm:"not null" validate:"required,min=3,max=20"`
-	Player2     string     `json:"player2" gorm:"not null" validate:"required,min=3,max=20"`
-	Board       Board      `json:"board" gorm:"type:jsonb"`
-	CurrentTurn PlayerColor `json:"currentTurn" gorm:"type:varchar(10)" validate:"required"`
-	Status      GameStatus `json:"status" gorm:"type:varchar(20);index" validate:"required"`
+	ID          string       `json:"id" gorm:"primaryKey" validate:"required"`
+	Player1     string       `json:"player1" gorm:"not null" validate:"required,min=3,max=20"`
+	Player2     string       `json:"player2" gorm:"not null" validate:"required,min=3,max=20"`
+	Board       Board        `json:"board" gorm:"type:jsonb"`
+	CurrentTurn PlayerColor  `json:"currentTurn" gorm:"type:varchar(10)" validate:"required"`
+	Status      GameStatus   `json:"status" gorm:"type:varchar(20);index" validate:"required"`
 	Winner      *PlayerColor `json:"winner,omitempty" gorm:"type:varchar(10)"`
-	StartTime   time.Time  `json:"startTime" gorm:"autoCreateTime"`
-	EndTime     *time.Time `json:"endTime,omitempty"`
-	MoveHistory []Move     `json:"moveHistory" gorm:"foreignKey:GameID"`
-	CreatedAt   time.Time  `json:"createdAt" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time  `json:"updatedAt" gorm:"autoUpdateTime"`
+	StartTime   time.Time    `json:"startTime" gorm:"autoCreateTime"`
+	EndTime     *time.Time   `json:"endTime,omitempty"`
+	MoveHistory []Move       `json:"moveHistory" gorm:"foreignKey:GameID"`
+	CreatedAt   time.Time    `json:"createdAt" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time    `json:"updatedAt" gorm:"autoUpdateTime"`
+	// Custom room fields
+	RoomCode  *string `json:"roomCode,omitempty" gorm:"type:varchar(8);uniqueIndex:idx_game_sessions_room_code,where:room_code IS NOT NULL"`
+	IsCustom  bool    `json:"isCustom" gorm:"default:false;not null;index:idx_game_sessions_is_custom,where:is_custom = true"`
+	CreatedBy *string `json:"createdBy,omitempty" gorm:"type:varchar(255)"`
 }
 
 // TableName returns the table name for GORM
@@ -84,7 +88,7 @@ func (gs *GameSession) GetPlayerColor(username string) PlayerColor {
 // Board represents the Connect 4 game board
 type Board struct {
 	Grid   [6][7]PlayerColor `json:"cells"`
-	Height [7]int           `json:"height"`
+	Height [7]int            `json:"height"`
 }
 
 // NewBoard creates a new empty board
@@ -105,11 +109,11 @@ func (b *Board) MakeMove(column int, player PlayerColor) error {
 	if !b.IsValidMove(column) {
 		return ErrInvalidMove
 	}
-	
+
 	row := b.Height[column]
 	b.Grid[row][column] = player
 	b.Height[column]++
-	
+
 	return nil
 }
 
@@ -186,12 +190,12 @@ func (b *Board) Scan(value interface{}) error {
 		*b = NewBoard()
 		return nil
 	}
-	
+
 	bytes, ok := value.([]byte)
 	if !ok {
 		return ErrInvalidBoardData
 	}
-	
+
 	return json.Unmarshal(bytes, b)
 }
 

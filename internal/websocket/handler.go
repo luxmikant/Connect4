@@ -49,6 +49,10 @@ func (h *GameMessageHandler) HandleMessage(ctx context.Context, conn *Connection
 		return h.handleLeaveQueue(ctx, conn, message)
 	case MessageTypePlayWithBot:
 		return h.handlePlayWithBot(ctx, conn, message)
+	case MessageTypeCreateCustomRoom:
+		return h.handleCreateCustomRoom(ctx, conn, message)
+	case MessageTypeJoinCustomRoom:
+		return h.handleJoinCustomRoom(ctx, conn, message)
 	case MessageTypeJoinGame:
 		return h.handleJoinGame(ctx, conn, message)
 	case MessageTypeMakeMove:
@@ -157,6 +161,143 @@ func (h *GameMessageHandler) handlePlayWithBot(ctx context.Context, conn *Connec
 	}
 
 	return nil
+}
+
+// handleCreateCustomRoom processes create custom room requests
+func (h *GameMessageHandler) handleCreateCustomRoom(ctx context.Context, conn *Connection, message *Message) error {
+	username, ok := message.Payload["username"].(string)
+	if !ok || username == "" {
+		return fmt.Errorf("invalid username")
+	}
+
+	log.Printf("Player %s creating custom room", username)
+
+	// Update connection with username and re-register in hub
+	oldUserID := conn.GetUserID()
+	conn.SetUserID(username)
+	h.hub.UpdateConnectionUserID(conn, oldUserID, username)
+
+	// Create custom room
+	gameSession, roomCode, err := h.gameService.CreateCustomRoom(ctx, username)
+	if err != nil {
+		log.Printf("Failed to create custom room: %v", err)
+		errMsg := CreateErrorMessage("room_creation_failed", "Failed to create custom room", err.Error())
+		data, _ := errMsg.ToJSON()
+		conn.SendMessage(data)
+		return fmt.Errorf("failed to create custom room: %w", err)
+	}
+
+	log.Printf("Custom room created: %s (Room Code: %s, Game ID: %s)", username, roomCode, gameSession.ID)
+
+	// Update connection's current game
+	conn.SetGameID(gameSession.ID)
+
+	// Add creator to game room
+	h.hub.AddToGameRoom(gameSession.ID, conn)
+
+	// Generate room URL (assumes frontend is at the same host)
+	roomURL := fmt.Sprintf("/game?room=%s", roomCode)
+
+	// Send room created message to creator
+	roomCreatedMsg := CreateRoomCreatedMessage(gameSession.ID, roomCode, roomURL)
+	data, err := roomCreatedMsg.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to serialize room created message: %w", err)
+	}
+	conn.SendMessage(data)
+
+	// Send waiting for opponent message
+	waitingMsg := CreateWaitingForOpponentMessage(gameSession.ID, roomCode)
+	data, err = waitingMsg.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to serialize waiting message: %w", err)
+	}
+	conn.SendMessage(data)
+
+	log.Printf("Sent room created and waiting messages to %s", username)
+
+	return nil
+}
+
+// handleJoinCustomRoom processes join custom room requests
+func (h *GameMessageHandler) handleJoinCustomRoom(ctx context.Context, conn *Connection, message *Message) error {
+	username, ok := message.Payload["username"].(string)
+	if !ok || username == "" {
+		return fmt.Errorf("invalid username")
+	}
+
+	roomCode, ok := message.Payload["roomCode"].(string)
+	if !ok || roomCode == "" {
+		return fmt.Errorf("invalid room code")
+	}
+
+	log.Printf("Player %s joining custom room: %s", username, roomCode)
+
+	// Update connection with username and re-register in hub
+	oldUserID := conn.GetUserID()
+	conn.SetUserID(username)
+	h.hub.UpdateConnectionUserID(conn, oldUserID, username)
+
+	// Join the custom room
+	gameSession, err := h.gameService.JoinCustomRoom(ctx, roomCode, username)
+	if err != nil {
+		log.Printf("Failed to join custom room: %v", err)
+		errMsg := CreateErrorMessage("room_join_failed", "Failed to join custom room", err.Error())
+		data, _ := errMsg.ToJSON()
+		conn.SendMessage(data)
+		return fmt.Errorf("failed to join custom room: %w", err)
+	}
+
+	log.Printf("Player %s successfully joined room %s (Game ID: %s)", username, roomCode, gameSession.ID)
+
+	// Update connection's current game
+	conn.SetGameID(gameSession.ID)
+
+	// Add joiner to game room
+	h.hub.AddToGameRoom(gameSession.ID, conn)
+
+	// Notify both players that the game has started
+	h.notifyGameStarted(gameSession)
+
+	return nil
+}
+
+// notifyGameStarted sends game started messages to both players
+func (h *GameMessageHandler) notifyGameStarted(session *models.GameSession) {
+	log.Printf("Notifying players that game %s has started", session.ID)
+
+	// Get player colors
+	player1Color := string(models.PlayerColorRed)
+	player2Color := string(models.PlayerColorYellow)
+
+	// Create game started message for player1
+	msg1 := CreateGameStartedMessage(
+		session.ID,
+		session.Player2,
+		player1Color,
+		string(session.CurrentTurn),
+		false,
+		session.Board,
+	)
+
+	// Create game started message for player2
+	msg2 := CreateGameStartedMessage(
+		session.ID,
+		session.Player1,
+		player2Color,
+		string(session.CurrentTurn),
+		false,
+		session.Board,
+	)
+
+	// Send to both players
+	data1, _ := msg1.ToJSON()
+	data2, _ := msg2.ToJSON()
+
+	h.hub.SendToPlayer(session.Player1, data1)
+	h.hub.SendToPlayer(session.Player2, data2)
+
+	log.Printf("Game started notifications sent to %s and %s", session.Player1, session.Player2)
 }
 
 // sendQueueStatusUpdates sends periodic queue status updates to a player

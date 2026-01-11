@@ -2,8 +2,11 @@ package game
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log/slog"
+	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +30,11 @@ type GameService interface {
 	CreateSession(ctx context.Context, player1, player2 string) (*models.GameSession, error)
 	GetSession(ctx context.Context, gameID string) (*models.GameSession, error)
 	EndSession(ctx context.Context, gameID string, winner *models.PlayerColor, reason string) error
+	
+	// Custom room management
+	CreateCustomRoom(ctx context.Context, creator string) (*models.GameSession, string, error)
+	JoinCustomRoom(ctx context.Context, roomCode, username string) (*models.GameSession, error)
+	GetSessionByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error)
 	
 	// Turn management
 	GetCurrentTurn(ctx context.Context, gameID string) (string, models.PlayerColor, error)
@@ -200,6 +208,189 @@ func (s *gameService) CreateSession(ctx context.Context, player1, player2 string
 	}
 	
 	return session, nil
+}
+
+// generateRoomCode generates a unique 8-character alphanumeric room code
+func generateRoomCode() (string, error) {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const codeLength = 8
+	
+	code := make([]byte, codeLength)
+	for i := range code {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", fmt.Errorf("failed to generate random number: %w", err)
+		}
+		code[i] = charset[num.Int64()]
+	}
+	
+	return string(code), nil
+}
+
+// CreateCustomRoom creates a new custom game room with a unique room code
+func (s *gameService) CreateCustomRoom(ctx context.Context, creator string) (*models.GameSession, string, error) {
+	if creator == "" {
+		return nil, "", fmt.Errorf("creator username cannot be empty")
+	}
+	
+	// Generate unique room code (retry up to 5 times if collision)
+	var roomCode string
+	var err error
+	for i := 0; i < 5; i++ {
+		roomCode, err = generateRoomCode()
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to generate room code: %w", err)
+		}
+		
+		// Check if room code already exists
+		existing, _ := s.GetSessionByRoomCode(ctx, roomCode)
+		if existing == nil {
+			break // Code is unique
+		}
+		
+		if i == 4 {
+			return nil, "", fmt.Errorf("failed to generate unique room code after 5 attempts")
+		}
+	}
+	
+	// Create new game session with custom room fields
+	// Use temporary placeholder for player2 until opponent joins
+	session := &models.GameSession{
+		Player1:     creator,
+		Player2:     "waiting", // Placeholder until opponent joins
+		Status:      models.StatusWaiting,
+		CurrentTurn: models.PlayerColorRed,
+		Board:       models.NewBoard(),
+		StartTime:   time.Now(),
+		RoomCode:    &roomCode,
+		IsCustom:    true,
+		CreatedBy:   &creator,
+	}
+	
+	// Persist to database
+	if err := s.gameRepo.Create(ctx, session); err != nil {
+		return nil, "", fmt.Errorf("failed to create custom room: %w", err)
+	}
+	
+	// Cache the session for fast access
+	s.CacheSession(session)
+	
+	// Log room creation
+	s.logger.Info("custom room created",
+		"gameID", session.ID,
+		"roomCode", roomCode,
+		"creator", creator,
+	)
+	
+	return session, roomCode, nil
+}
+
+// JoinCustomRoom allows a player to join an existing custom room by code
+func (s *gameService) JoinCustomRoom(ctx context.Context, roomCode, username string) (*models.GameSession, error) {
+	if roomCode == "" {
+		return nil, fmt.Errorf("room code cannot be empty")
+	}
+	if username == "" {
+		return nil, fmt.Errorf("username cannot be empty")
+	}
+	
+	// Normalize room code to uppercase
+	roomCode = strings.ToUpper(strings.TrimSpace(roomCode))
+	
+	// Find session by room code
+	session, err := s.GetSessionByRoomCode(ctx, roomCode)
+	if err != nil {
+		return nil, fmt.Errorf("room not found: %w", err)
+	}
+	
+	if session == nil {
+		return nil, fmt.Errorf("room with code %s does not exist", roomCode)
+	}
+	
+	// Validate room is still waiting for players
+	if session.Status != models.StatusWaiting {
+		return nil, fmt.Errorf("room is no longer available (status: %s)", session.Status)
+	}
+	
+	// Check if user is trying to join their own room
+	if session.Player1 == username {
+		return nil, fmt.Errorf("cannot join your own room")
+	}
+	
+	// Check if room already has a second player
+	if session.Player2 != "waiting" {
+		return nil, fmt.Errorf("room is already full")
+	}
+	
+	// Add player as Player2 and start the game
+	session.Player2 = username
+	session.Status = models.StatusInProgress
+	session.StartTime = time.Now()
+	
+	// Persist changes
+	if err := s.gameRepo.Update(ctx, session); err != nil {
+		return nil, fmt.Errorf("failed to join custom room: %w", err)
+	}
+	
+	// Update cache
+	s.CacheSession(session)
+	
+	// Log player join
+	s.logger.Info("player joined custom room",
+		"gameID", session.ID,
+		"roomCode", roomCode,
+		"player1", session.Player1,
+		"player2", username,
+	)
+	
+	// Create game started event
+	event := models.NewGameStartedEvent(session.ID, session.Player1, username)
+	if err := s.eventRepo.Create(ctx, event); err != nil {
+		s.logger.Warn("failed to create game started event",
+			"gameID", session.ID,
+			"error", err,
+		)
+	}
+	
+	// Send analytics event to Kafka
+	if s.analyticsProducer != nil {
+		go func() {
+			if err := s.analyticsProducer.SendGameStarted(context.Background(), session.ID, session.Player1, username); err != nil {
+				s.logger.Warn("failed to send game started analytics event",
+					"gameID", session.ID,
+					"error", err,
+				)
+			}
+		}()
+	}
+	
+	return session, nil
+}
+
+// GetSessionByRoomCode retrieves a game session by room code
+func (s *gameService) GetSessionByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error) {
+	if roomCode == "" {
+		return nil, fmt.Errorf("room code cannot be empty")
+	}
+	
+	// Normalize room code
+	roomCode = strings.ToUpper(strings.TrimSpace(roomCode))
+	
+	// Query database for session with this room code
+	// Note: This requires adding a method to the repository
+	sessions, err := s.gameRepo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query sessions: %w", err)
+	}
+	
+	for _, session := range sessions {
+		if session.RoomCode != nil && *session.RoomCode == roomCode {
+			return session, nil
+		}
+	}
+	
+	return nil, nil
+}
 }
 
 

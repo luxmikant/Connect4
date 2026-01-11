@@ -8,10 +8,12 @@ import (
 
 // Player represents a game player
 type Player struct {
-	ID        string    `json:"id" gorm:"primaryKey" validate:"required"`
-	Username  string    `json:"username" gorm:"uniqueIndex" validate:"required,min=3,max=20"`
-	CreatedAt time.Time `json:"createdAt" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updatedAt" gorm:"autoUpdateTime"`
+	ID         string    `json:"id" gorm:"primaryKey" validate:"required"`
+	Username   string    `json:"username" gorm:"uniqueIndex" validate:"required,min=3,max=20"`
+	AuthUserID *string   `json:"auth_user_id,omitempty" gorm:"index"`
+	IsGuest    bool      `json:"is_guest" gorm:"default:true"`
+	CreatedAt  time.Time `json:"createdAt" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time `json:"updatedAt" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the table name for GORM

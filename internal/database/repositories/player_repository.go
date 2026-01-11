@@ -100,6 +100,50 @@ func (r *playerRepository) GetByUsername(ctx context.Context, username string) (
 	return &player, nil
 }
 
+// GetByAuthUserID retrieves a player by auth_user_id
+func (r *playerRepository) GetByAuthUserID(ctx context.Context, authUserID string) (*models.Player, error) {
+	if authUserID == "" {
+		return nil, fmt.Errorf("authUserID cannot be empty")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var player models.Player
+	err := r.db.WithContext(ctx).First(&player, "auth_user_id = ?", authUserID).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, models.ErrPlayerNotFound
+		}
+		return nil, fmt.Errorf("failed to get player by auth_user_id: %w", err)
+	}
+
+	return &player, nil
+}
+
+// UpsertFromProfile creates or updates a player from auth profile using database function
+func (r *playerRepository) UpsertFromProfile(ctx context.Context, authUserID, username string) (string, error) {
+	if authUserID == "" || username == "" {
+		return "", fmt.Errorf("authUserID and username cannot be empty")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var playerID string
+	err := r.db.WithContext(ctx).Raw(
+		"SELECT upsert_player_from_profile(?, ?)",
+		authUserID,
+		username,
+	).Scan(&playerID).Error
+
+	if err != nil {
+		return "", fmt.Errorf("failed to upsert player from profile: %w", err)
+	}
+
+	return playerID, nil
+}
+
 // Update updates a player with optimistic locking
 func (r *playerRepository) Update(ctx context.Context, player *models.Player) error {
 	if player == nil {
@@ -196,12 +240,12 @@ func isRetryableError(err error) bool {
 
 // contains checks if a string contains a substring (case-insensitive)
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && 
-		   (s == substr || 
-		    (len(s) > len(substr) && 
-		     (s[:len(substr)] == substr || 
-		      s[len(s)-len(substr):] == substr ||
-		      indexOfSubstring(s, substr) >= 0)))
+	return len(s) >= len(substr) &&
+		(s == substr ||
+			(len(s) > len(substr) &&
+				(s[:len(substr)] == substr ||
+					s[len(s)-len(substr):] == substr ||
+					indexOfSubstring(s, substr) >= 0)))
 }
 
 // indexOfSubstring finds the index of a substring in a string

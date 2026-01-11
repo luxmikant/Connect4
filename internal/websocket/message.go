@@ -10,27 +10,31 @@ type MessageType string
 
 const (
 	// Client to Server messages
-	MessageTypeJoinQueue   MessageType = "join_queue"    // New: Join matchmaking queue
-	MessageTypeLeaveQueue  MessageType = "leave_queue"   // New: Leave matchmaking queue
-	MessageTypePlayWithBot MessageType = "play_with_bot" // New: Play directly with bot
-	MessageTypeJoinGame    MessageType = "join_game"
-	MessageTypeMakeMove    MessageType = "make_move"
-	MessageTypeReconnect   MessageType = "reconnect"
-	MessageTypeLeaveGame   MessageType = "leave_game"
-	MessageTypePing        MessageType = "ping"
+	MessageTypeJoinQueue        MessageType = "join_queue"         // New: Join matchmaking queue
+	MessageTypeLeaveQueue       MessageType = "leave_queue"        // New: Leave matchmaking queue
+	MessageTypePlayWithBot      MessageType = "play_with_bot"      // New: Play directly with bot
+	MessageTypeCreateCustomRoom MessageType = "create_custom_room" // New: Create custom room for friend invite
+	MessageTypeJoinCustomRoom   MessageType = "join_custom_room"   // New: Join custom room by code
+	MessageTypeJoinGame         MessageType = "join_game"
+	MessageTypeMakeMove         MessageType = "make_move"
+	MessageTypeReconnect        MessageType = "reconnect"
+	MessageTypeLeaveGame        MessageType = "leave_game"
+	MessageTypePing             MessageType = "ping"
 
 	// Server to Client messages
-	MessageTypeQueueJoined  MessageType = "queue_joined" // New: Joined matchmaking queue
-	MessageTypeQueueStatus  MessageType = "queue_status" // New: Queue status update
-	MessageTypeMatchFound   MessageType = "match_found"  // New: Match found notification
-	MessageTypeGameStarted  MessageType = "game_started"
-	MessageTypeMoveMade     MessageType = "move_made"
-	MessageTypeGameEnded    MessageType = "game_ended"
-	MessageTypeGameState    MessageType = "game_state"
-	MessageTypePlayerJoined MessageType = "player_joined"
-	MessageTypePlayerLeft   MessageType = "player_left"
-	MessageTypeError        MessageType = "error"
-	MessageTypePong         MessageType = "pong"
+	MessageTypeQueueJoined        MessageType = "queue_joined"         // New: Joined matchmaking queue
+	MessageTypeQueueStatus        MessageType = "queue_status"         // New: Queue status update
+	MessageTypeMatchFound         MessageType = "match_found"          // New: Match found notification
+	MessageTypeRoomCreated        MessageType = "room_created"         // New: Custom room created successfully
+	MessageTypeWaitingForOpponent MessageType = "waiting_for_opponent" // New: Waiting in custom room
+	MessageTypeGameStarted        MessageType = "game_started"
+	MessageTypeMoveMade           MessageType = "move_made"
+	MessageTypeGameEnded          MessageType = "game_ended"
+	MessageTypeGameState          MessageType = "game_state"
+	MessageTypePlayerJoined       MessageType = "player_joined"
+	MessageTypePlayerLeft         MessageType = "player_left"
+	MessageTypeError              MessageType = "error"
+	MessageTypePong               MessageType = "pong"
 )
 
 // Message represents a WebSocket message
@@ -85,6 +89,30 @@ type MatchFoundPayload struct {
 	GameID   string `json:"gameId"`
 	Opponent string `json:"opponent"`
 	IsBot    bool   `json:"isBot"`
+}
+
+// CreateCustomRoomPayload represents the payload for creating a custom room
+type CreateCustomRoomPayload struct {
+	Username string `json:"username"`
+}
+
+// JoinCustomRoomPayload represents the payload for joining a custom room
+type JoinCustomRoomPayload struct {
+	Username string `json:"username"`
+	RoomCode string `json:"roomCode"`
+}
+
+// RoomCreatedPayload represents when a custom room is created
+type RoomCreatedPayload struct {
+	GameID   string `json:"gameId"`
+	RoomCode string `json:"roomCode"`
+	RoomURL  string `json:"roomUrl"`
+}
+
+// WaitingForOpponentPayload represents waiting for opponent in custom room
+type WaitingForOpponentPayload struct {
+	GameID   string `json:"gameId"`
+	RoomCode string `json:"roomCode"`
 }
 
 // JoinGamePayload represents the payload for joining a game
@@ -205,6 +233,38 @@ func CreateMatchFoundMessage(gameID, opponent string, isBot bool) *Message {
 		"gameId":   gameID,
 		"opponent": opponent,
 		"isBot":    isBot,
+	})
+}
+
+// CreateCustomRoomMessage creates a create custom room message
+func CreateCustomRoomMessage(username string) *Message {
+	return NewMessage(MessageTypeCreateCustomRoom, map[string]interface{}{
+		"username": username,
+	})
+}
+
+// CreateJoinCustomRoomMessage creates a join custom room message
+func CreateJoinCustomRoomMessage(username, roomCode string) *Message {
+	return NewMessage(MessageTypeJoinCustomRoom, map[string]interface{}{
+		"username": username,
+		"roomCode": roomCode,
+	})
+}
+
+// CreateRoomCreatedMessage creates a room created message
+func CreateRoomCreatedMessage(gameID, roomCode, roomURL string) *Message {
+	return NewMessage(MessageTypeRoomCreated, map[string]interface{}{
+		"gameId":   gameID,
+		"roomCode": roomCode,
+		"roomUrl":  roomURL,
+	})
+}
+
+// CreateWaitingForOpponentMessage creates a waiting for opponent message
+func CreateWaitingForOpponentMessage(gameID, roomCode string) *Message {
+	return NewMessage(MessageTypeWaitingForOpponent, map[string]interface{}{
+		"gameId":   gameID,
+		"roomCode": roomCode,
 	})
 }
 

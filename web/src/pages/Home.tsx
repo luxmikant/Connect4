@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Play, Trophy, Cpu, LogIn, UserPlus } from 'lucide-react';
+import { Play, Trophy, Cpu, LogIn, UserPlus, User, ChevronDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
     <div className="min-h-screen bg-game-bg flex flex-col relative overflow-hidden">
@@ -16,15 +17,53 @@ export const Home: React.FC = () => {
           <div className="text-2xl font-black text-white">CONNECT 4</div>
           <div className="flex gap-3">
             {user ? (
-              <>
-                <span className="text-slate-300 px-4 py-2">{user.email}</span>
+              <div className="relative">
                 <button
-                  onClick={() => signOut()}
-                  className="px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
                 >
-                  Sign Out
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-game-accent to-purple-600 flex items-center justify-center text-white text-sm font-bold">
+                    {profile?.username?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                  <span>{profile?.username || user.email}</span>
+                  <ChevronDown className="w-4 h-4" />
                 </button>
-              </>
+                
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
+                    <button
+                      onClick={() => {
+                        navigate('/profile');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full px-4 py-3 text-left text-white hover:bg-slate-700 transition-colors flex items-center gap-2"
+                    >
+                      <User className="w-4 h-4" />
+                      My Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/leaderboard');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full px-4 py-3 text-left text-white hover:bg-slate-700 transition-colors flex items-center gap-2"
+                    >
+                      <Trophy className="w-4 h-4" />
+                      Leaderboard
+                    </button>
+                    <hr className="border-slate-700" />
+                    <button
+                      onClick={() => {
+                        signOut();
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full px-4 py-3 text-left text-red-400 hover:bg-slate-700 transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <button

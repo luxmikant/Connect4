@@ -29,3 +29,9 @@ redis:
   url: "localhost:6379"
   password: ""
   db: 0
+
+supabase:
+  url: "https://juwkmydyrhgwmhcqwhye.supabase.co"
+  service_key: ""  # Get from: https://supabase.com/dashboard/project/juwkmydyrhgwmhcqwhye/settings/api (service_role key, starts with eyJ...)
+  anon_key: ""  # Get from same page (anon/public key, starts with eyJ...)
+

@@ -12,6 +12,8 @@ type PlayerRepository interface {
 	Create(ctx context.Context, player *models.Player) error
 	GetByID(ctx context.Context, id string) (*models.Player, error)
 	GetByUsername(ctx context.Context, username string) (*models.Player, error)
+	GetByAuthUserID(ctx context.Context, authUserID string) (*models.Player, error)
+	UpsertFromProfile(ctx context.Context, authUserID, username string) (string, error)
 	Update(ctx context.Context, player *models.Player) error
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context, limit, offset int) ([]*models.Player, error)
@@ -26,7 +28,7 @@ type GameSessionRepository interface {
 	GetActiveGames(ctx context.Context) ([]*models.GameSession, error)
 	GetGamesByPlayer(ctx context.Context, playerID string) ([]*models.GameSession, error)
 	GetGameHistory(ctx context.Context, limit, offset int) ([]*models.GameSession, error)
-	
+
 	// Optimized queries for active session lookups
 	GetActiveSessionByPlayer(ctx context.Context, username string) (*models.GameSession, error)
 	GetActiveSessionCount(ctx context.Context) (int64, error)

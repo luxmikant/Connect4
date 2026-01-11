@@ -94,6 +94,7 @@ func setupAPIRoutes(
 		{
 			authGroup.GET("/me", authHandler.GetMe)
 			authGroup.PUT("/profile", authHandler.UpdateProfile)
+			authGroup.POST("/player", authHandler.GetOrCreatePlayer)
 		}
 
 		// Game management endpoints

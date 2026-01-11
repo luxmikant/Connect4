@@ -97,7 +97,7 @@ func main() {
 
 	// Initialize Supabase Auth and Auth Handler
 	supabaseAuth := auth.NewSupabaseAuth(cfg.Supabase.URL, cfg.Supabase.ServiceKey)
-	authHandler := handlers.NewAuthHandler(supabaseAuth)
+	authHandler := handlers.NewAuthHandler(supabaseAuth, repoManager.Player)
 
 	// Set Gin mode based on environment
 	if cfg.Environment == "production" {
