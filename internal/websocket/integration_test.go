@@ -139,10 +139,35 @@ func (m *MockGameServiceIntegration) GetCacheStats() map[string]interface{} {
 	return args.Get(0).(map[string]interface{})
 }
 
+// Custom room methods
+func (m *MockGameServiceIntegration) CreateCustomRoom(ctx context.Context, creator string) (*models.GameSession, string, error) {
+	args := m.Called(ctx, creator)
+	if args.Get(0) == nil {
+		return nil, "", args.Error(2)
+	}
+	return args.Get(0).(*models.GameSession), args.String(1), args.Error(2)
+}
+
+func (m *MockGameServiceIntegration) JoinCustomRoom(ctx context.Context, roomCode, username string) (*models.GameSession, error) {
+	args := m.Called(ctx, roomCode, username)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GameSession), args.Error(1)
+}
+
+func (m *MockGameServiceIntegration) GetSessionByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error) {
+	args := m.Called(ctx, roomCode)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GameSession), args.Error(1)
+}
+
 func TestWebSocketMatchmakingIntegration(t *testing.T) {
 	// Create mock game service
 	mockGameService := new(MockGameServiceIntegration)
-	
+
 	// Create matchmaking service
 	matchmakingConfig := &matchmaking.ServiceConfig{
 		MatchTimeout:  1 * time.Second, // Short timeout for test
@@ -150,47 +175,47 @@ func TestWebSocketMatchmakingIntegration(t *testing.T) {
 		Logger:        slog.Default(),
 	}
 	matchmakingService := matchmaking.NewMatchmakingService(mockGameService, matchmakingConfig)
-	
+
 	// Create WebSocket service with matchmaking
 	wsService := websocket.NewService(mockGameService, matchmakingService)
-	
+
 	// Start services
 	ctx := context.Background()
 	err := wsService.Start(ctx)
 	assert.NoError(t, err)
-	
+
 	defer wsService.Stop()
-	
+
 	// Verify services are running
 	assert.NotNil(t, wsService.GetHub())
 	assert.Equal(t, 0, wsService.GetConnectionCount())
-	
+
 	// Test that matchmaking service is integrated
 	// (This is a basic integration test - full WebSocket testing would require actual connections)
 	time.Sleep(100 * time.Millisecond) // Allow services to start
-	
+
 	// The integration is successful if no errors occurred during startup
 }
 
 func TestWebSocketServiceLifecycle(t *testing.T) {
 	// Create mock game service
 	mockGameService := new(MockGameServiceIntegration)
-	
+
 	// Create matchmaking service
 	matchmakingService := matchmaking.NewMatchmakingService(mockGameService, matchmaking.DefaultServiceConfig())
-	
+
 	// Create WebSocket service
 	wsService := websocket.NewService(mockGameService, matchmakingService)
-	
+
 	// Test start
 	ctx := context.Background()
 	err := wsService.Start(ctx)
 	assert.NoError(t, err)
-	
+
 	// Verify service is running
 	assert.NotNil(t, wsService.GetHub())
 	assert.NotNil(t, wsService.GetWebSocketHandler())
-	
+
 	// Test stop
 	err = wsService.Stop()
 	assert.NoError(t, err)

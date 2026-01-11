@@ -20,7 +20,6 @@ export const Game: React.FC = () => {
   const [searchParams] = useSearchParams();
   const hasJoinedRef = useRef(false);
   const [roomCode, setRoomCode] = useState<string | null>(null);
-  const [roomUrl, setRoomUrl] = useState<string | null>(null);
   const [isWaitingForOpponent, setIsWaitingForOpponent] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -31,32 +30,31 @@ export const Game: React.FC = () => {
 
   // Subscribe to custom room messages
   useEffect(() => {
-    const handleRoomCreated = (message: any) => {
-      const { roomCode: code, roomUrl: url } = message.payload;
+    const handleRoomCreated = (_message: any) => {
+      const { roomCode: code } = _message.payload;
       setRoomCode(code);
-      setRoomUrl(url);
       setIsWaitingForOpponent(true);
       playSound('click');
       toast.success(`Room created! Code: ${code}`, { duration: 5000 });
     };
 
-    const handleWaitingForOpponent = (message: any) => {
+    const handleWaitingForOpponent = (_message: any) => {
       setIsWaitingForOpponent(true);
     };
 
-    const handleGameStarted = (message: any) => {
+    const handleGameStarted = (_message: any) => {
       setIsWaitingForOpponent(false);
-      playSound('start');
+      playSound('click');
     };
 
-    wsService.subscribe(MessageType.RoomCreated, handleRoomCreated);
-    wsService.subscribe(MessageType.WaitingForOpponent, handleWaitingForOpponent);
-    wsService.subscribe(MessageType.GameStarted, handleGameStarted);
+    const unsubRoom = wsService.subscribe(MessageType.RoomCreated, handleRoomCreated);
+    const unsubWaiting = wsService.subscribe(MessageType.WaitingForOpponent, handleWaitingForOpponent);
+    const unsubStarted = wsService.subscribe(MessageType.GameStarted, handleGameStarted);
 
     return () => {
-      wsService.unsubscribe(MessageType.RoomCreated, handleRoomCreated);
-      wsService.unsubscribe(MessageType.WaitingForOpponent, handleWaitingForOpponent);
-      wsService.unsubscribe(MessageType.GameStarted, handleGameStarted);
+      unsubRoom();
+      unsubWaiting();
+      unsubStarted();
     };
   }, [playSound]);
 
@@ -138,8 +136,6 @@ export const Game: React.FC = () => {
   const handleCopyRoomCode = async () => {
     if (!roomCode) return;
     
-    const fullUrl = `${window.location.origin}/game?room=${roomCode}`;
-    
     try {
       await navigator.clipboard.writeText(roomCode);
       setCopiedCode(true);
@@ -155,10 +151,9 @@ export const Game: React.FC = () => {
   const handleShareRoom = async () => {
     if (!roomCode) return;
     
-    const fullUrl = `${window.location.origin}/game?room=${roomCode}`;
-    
     if (navigator.share) {
       try {
+        const fullUrl = `${window.location.origin}/game?room=${roomCode}`;
         await navigator.share({
           title: 'Join my Connect 4 game!',
           text: `Play Connect 4 with me! Room code: ${roomCode}`,

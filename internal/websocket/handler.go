@@ -106,7 +106,7 @@ func (h *GameMessageHandler) handleJoinQueue(ctx context.Context, conn *Connecti
 }
 
 // handleLeaveQueue processes leave queue requests
-func (h *GameMessageHandler) handleLeaveQueue(ctx context.Context, conn *Connection, message *Message) error {
+func (h *GameMessageHandler) handleLeaveQueue(ctx context.Context, conn *Connection, _ *Message) error {
 	username := conn.GetUserID()
 	if username == "" {
 		return fmt.Errorf("no username set")
@@ -193,7 +193,7 @@ func (h *GameMessageHandler) handleCreateCustomRoom(ctx context.Context, conn *C
 	conn.SetGameID(gameSession.ID)
 
 	// Add creator to game room
-	h.hub.AddToGameRoom(gameSession.ID, conn)
+	h.hub.addToGameRoom(conn)
 
 	// Generate room URL (assumes frontend is at the same host)
 	roomURL := fmt.Sprintf("/game?room=%s", roomCode)
@@ -254,7 +254,7 @@ func (h *GameMessageHandler) handleJoinCustomRoom(ctx context.Context, conn *Con
 	conn.SetGameID(gameSession.ID)
 
 	// Add joiner to game room
-	h.hub.AddToGameRoom(gameSession.ID, conn)
+	h.hub.addToGameRoom(conn)
 
 	// Notify both players that the game has started
 	h.notifyGameStarted(gameSession)
@@ -294,8 +294,13 @@ func (h *GameMessageHandler) notifyGameStarted(session *models.GameSession) {
 	data1, _ := msg1.ToJSON()
 	data2, _ := msg2.ToJSON()
 
-	h.hub.SendToPlayer(session.Player1, data1)
-	h.hub.SendToPlayer(session.Player2, data2)
+	// Use BroadcastToGame to send to each player individually
+	if conn1, exists := h.hub.GetConnection(session.Player1); exists {
+		conn1.SendMessage(data1)
+	}
+	if conn2, exists := h.hub.GetConnection(session.Player2); exists {
+		conn2.SendMessage(data2)
+	}
 
 	log.Printf("Game started notifications sent to %s and %s", session.Player1, session.Player2)
 }
@@ -353,8 +358,7 @@ func (h *GameMessageHandler) onGameCreated(ctx context.Context, player1, player2
 	h.notifyMatchFound(player2, gameSession.ID, player1, false)
 
 	// Send game started messages to both players
-	h.notifyGameStarted(ctx, player1, gameSession)
-	h.notifyGameStarted(ctx, player2, gameSession)
+	h.notifyGameStarted(gameSession)
 
 	return nil
 }
@@ -367,7 +371,7 @@ func (h *GameMessageHandler) onBotGameCreated(ctx context.Context, player string
 	h.notifyMatchFound(player, gameSession.ID, gameSession.Player2, true)
 
 	// Send game started message to player
-	h.notifyGameStarted(ctx, player, gameSession)
+	h.notifyGameStarted(gameSession)
 
 	// If bot goes first (player is yellow), make bot move
 	if gameSession.CurrentTurn == models.PlayerColorRed && h.isBot(gameSession.Player1) {
@@ -542,56 +546,6 @@ func (h *GameMessageHandler) notifyMatchFound(username, gameID, opponent string,
 	}
 
 	conn.SendMessage(data)
-}
-
-// notifyGameStarted sends a game started notification to a player
-func (h *GameMessageHandler) notifyGameStarted(ctx context.Context, username string, gameSession *models.GameSession) {
-	// Find connection for the player
-	conn, exists := h.hub.GetConnection(username)
-	if !exists {
-		log.Printf("Connection not found for player %s", username)
-		return
-	}
-
-	// Update connection with game ID
-	conn.SetGameID(gameSession.ID)
-
-	// Add connection to game room
-	h.hub.mu.Lock()
-	h.hub.addToGameRoom(conn)
-	h.hub.mu.Unlock()
-
-	// Determine opponent and colors
-	var opponent string
-	if gameSession.Player1 == username {
-		opponent = gameSession.Player2
-	} else {
-		opponent = gameSession.Player1
-	}
-
-	isBot := h.isBot(opponent)
-	yourColor := string(gameSession.GetPlayerColor(username))
-	currentTurn := string(gameSession.CurrentTurn)
-
-	gameStartedMsg := CreateGameStartedMessage(
-		gameSession.ID,
-		opponent,
-		yourColor,
-		currentTurn,
-		isBot,
-		gameSession.Board,
-	)
-
-	data, err := gameStartedMsg.ToJSON()
-	if err != nil {
-		log.Printf("Failed to serialize game started message: %v", err)
-		return
-	}
-
-	conn.SendMessage(data)
-
-	// Note: game_started message already contains all necessary game state information
-	// No need to send a separate game_state message
 }
 
 func (h *GameMessageHandler) handleJoinGame(ctx context.Context, conn *Connection, message *Message) error {
@@ -828,7 +782,7 @@ func (h *GameMessageHandler) handleReconnect(ctx context.Context, conn *Connecti
 }
 
 // handleLeaveGame processes leave game requests
-func (h *GameMessageHandler) handleLeaveGame(ctx context.Context, conn *Connection, message *Message) error {
+func (h *GameMessageHandler) handleLeaveGame(_ context.Context, conn *Connection, _ *Message) error {
 	gameID := conn.GetGameID()
 	username := conn.GetUserID()
 
@@ -862,7 +816,7 @@ func (h *GameMessageHandler) handleLeaveGame(ctx context.Context, conn *Connecti
 }
 
 // handlePing processes ping requests
-func (h *GameMessageHandler) handlePing(ctx context.Context, conn *Connection, message *Message) error {
+func (h *GameMessageHandler) handlePing(_ context.Context, conn *Connection, _ *Message) error {
 	pongMsg := CreatePongMessage()
 	data, err := pongMsg.ToJSON()
 	if err != nil {

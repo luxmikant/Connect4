@@ -202,7 +202,6 @@ func (r *gameSessionRepository) GetGameHistory(ctx context.Context, limit, offse
 	return sessions, nil
 }
 
-
 // GetActiveSessionByPlayer retrieves an active session for a specific player
 // Optimized query using index on status and player columns
 func (r *gameSessionRepository) GetActiveSessionByPlayer(ctx context.Context, username string) (*models.GameSession, error) {
@@ -304,4 +303,28 @@ func (r *gameSessionRepository) BulkUpdateStatus(ctx context.Context, sessionIDs
 	}
 
 	return nil
+}
+
+// GetByRoomCode retrieves a game session by room code
+func (r *gameSessionRepository) GetByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error) {
+	if roomCode == "" {
+		return nil, fmt.Errorf("room code cannot be empty")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var session models.GameSession
+	err := r.db.WithContext(ctx).
+		Where("room_code = ?", roomCode).
+		First(&session).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // Return nil if not found (not an error for this case)
+		}
+		return nil, fmt.Errorf("failed to get game session by room code: %w", err)
+	}
+
+	return &session, nil
 }

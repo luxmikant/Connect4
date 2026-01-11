@@ -110,6 +110,15 @@ func (m *MockGameSessionRepository) BulkUpdateStatus(ctx context.Context, sessio
 	return nil
 }
 
+func (m *MockGameSessionRepository) GetByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error) {
+	for _, game := range m.games {
+		if game.RoomCode != nil && *game.RoomCode == roomCode {
+			return game, nil
+		}
+	}
+	return nil, nil
+}
+
 // MockMoveRepository for testing
 type MockMoveRepository struct {
 	moves map[string][]*models.Move

@@ -34,6 +34,9 @@ type GameSessionRepository interface {
 	GetActiveSessionCount(ctx context.Context) (int64, error)
 	GetTimedOutSessions(ctx context.Context, timeout time.Duration) ([]*models.GameSession, error)
 	BulkUpdateStatus(ctx context.Context, sessionIDs []string, status models.GameStatus) error
+
+	// Custom room queries
+	GetByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error)
 }
 
 // PlayerStatsRepository defines the interface for player statistics operations

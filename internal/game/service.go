@@ -30,40 +30,40 @@ type GameService interface {
 	CreateSession(ctx context.Context, player1, player2 string) (*models.GameSession, error)
 	GetSession(ctx context.Context, gameID string) (*models.GameSession, error)
 	EndSession(ctx context.Context, gameID string, winner *models.PlayerColor, reason string) error
-	
+
 	// Custom room management
 	CreateCustomRoom(ctx context.Context, creator string) (*models.GameSession, string, error)
 	JoinCustomRoom(ctx context.Context, roomCode, username string) (*models.GameSession, error)
 	GetSessionByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error)
-	
+
 	// Turn management
 	GetCurrentTurn(ctx context.Context, gameID string) (string, models.PlayerColor, error)
 	SwitchTurn(ctx context.Context, gameID string) error
-	
+
 	// Player color assignment
 	AssignPlayerColors(ctx context.Context, gameID string) (map[string]models.PlayerColor, error)
-	
+
 	// Game completion and statistics
 	CompleteGame(ctx context.Context, gameID string, winner *models.PlayerColor) error
-	
+
 	// Active session management
 	GetActiveSessions(ctx context.Context) ([]*models.GameSession, error)
 	GetSessionsByPlayer(ctx context.Context, username string) ([]*models.GameSession, error)
 	GetActiveSessionByPlayer(ctx context.Context, username string) (*models.GameSession, error)
 	GetActiveSessionCount(ctx context.Context) (int64, error)
-	
+
 	// Session cleanup and timeout handling
 	CleanupTimedOutSessions(ctx context.Context, timeout time.Duration) (int, error)
 	MarkSessionAbandoned(ctx context.Context, gameID string) error
 	StartCleanupWorker(ctx context.Context, interval time.Duration)
 	StopCleanupWorker()
-	
+
 	// Player disconnection handling (Requirement 4)
 	MarkPlayerDisconnected(ctx context.Context, gameID string, username string) error
 	MarkPlayerReconnected(ctx context.Context, gameID string, username string) error
 	GetDisconnectedPlayers(gameID string) map[string]time.Time
 	HandleDisconnectionTimeout(ctx context.Context, gameID string, username string) error
-	
+
 	// In-memory cache operations
 	CacheSession(session *models.GameSession)
 	GetCachedSession(gameID string) (*models.GameSession, bool)
@@ -78,26 +78,26 @@ type gameService struct {
 	statsRepo repositories.PlayerStatsRepository
 	moveRepo  repositories.MoveRepository
 	eventRepo repositories.GameEventRepository
-	
+
 	// Analytics producer for Kafka events (Requirement 9, 10)
 	analyticsProducer AnalyticsProducer
-	
+
 	// In-memory cache for active sessions
 	sessionCache map[string]*cachedSession
 	cacheMutex   sync.RWMutex
-	
+
 	// Player disconnection tracking (Requirement 4)
 	disconnectedPlayers map[string]map[string]time.Time // gameID -> username -> disconnectTime
 	disconnectMutex     sync.RWMutex
-	
+
 	// Cleanup worker control
 	cleanupCancel context.CancelFunc
 	cleanupWg     sync.WaitGroup
-	
+
 	// Configuration
-	sessionTimeout       time.Duration
-	disconnectTimeout    time.Duration // 30 seconds per Requirement 4
-	logger               *slog.Logger
+	sessionTimeout    time.Duration
+	disconnectTimeout time.Duration // 30 seconds per Requirement 4
+	logger            *slog.Logger
 }
 
 // cachedSession wraps a game session with cache metadata
@@ -136,7 +136,7 @@ func NewGameService(
 	if config == nil {
 		config = DefaultServiceConfig()
 	}
-	
+
 	return &gameService{
 		gameRepo:            gameRepo,
 		statsRepo:           statsRepo,
@@ -156,11 +156,11 @@ func (s *gameService) CreateSession(ctx context.Context, player1, player2 string
 	if player1 == "" || player2 == "" {
 		return nil, fmt.Errorf("player usernames cannot be empty")
 	}
-	
+
 	if player1 == player2 {
 		return nil, fmt.Errorf("players must have different usernames")
 	}
-	
+
 	// Create new game session
 	session := &models.GameSession{
 		Player1:     player1,
@@ -170,22 +170,22 @@ func (s *gameService) CreateSession(ctx context.Context, player1, player2 string
 		Board:       models.NewBoard(),
 		StartTime:   time.Now(),
 	}
-	
+
 	// Persist to database
 	if err := s.gameRepo.Create(ctx, session); err != nil {
 		return nil, fmt.Errorf("failed to create game session: %w", err)
 	}
-	
+
 	// Cache the session for fast access
 	s.CacheSession(session)
-	
+
 	// Log session creation
 	s.logger.Info("game session created",
 		"gameID", session.ID,
 		"player1", player1,
 		"player2", player2,
 	)
-	
+
 	// Create game started event in database
 	event := models.NewGameStartedEvent(session.ID, player1, player2)
 	if err := s.eventRepo.Create(ctx, event); err != nil {
@@ -194,7 +194,7 @@ func (s *gameService) CreateSession(ctx context.Context, player1, player2 string
 			"error", err,
 		)
 	}
-	
+
 	// Send analytics event to Kafka (Requirement 9.1)
 	if s.analyticsProducer != nil {
 		go func() {
@@ -206,7 +206,7 @@ func (s *gameService) CreateSession(ctx context.Context, player1, player2 string
 			}
 		}()
 	}
-	
+
 	return session, nil
 }
 
@@ -214,7 +214,7 @@ func (s *gameService) CreateSession(ctx context.Context, player1, player2 string
 func generateRoomCode() (string, error) {
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	const codeLength = 8
-	
+
 	code := make([]byte, codeLength)
 	for i := range code {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
@@ -223,7 +223,7 @@ func generateRoomCode() (string, error) {
 		}
 		code[i] = charset[num.Int64()]
 	}
-	
+
 	return string(code), nil
 }
 
@@ -232,7 +232,7 @@ func (s *gameService) CreateCustomRoom(ctx context.Context, creator string) (*mo
 	if creator == "" {
 		return nil, "", fmt.Errorf("creator username cannot be empty")
 	}
-	
+
 	// Generate unique room code (retry up to 5 times if collision)
 	var roomCode string
 	var err error
@@ -241,18 +241,18 @@ func (s *gameService) CreateCustomRoom(ctx context.Context, creator string) (*mo
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to generate room code: %w", err)
 		}
-		
+
 		// Check if room code already exists
 		existing, _ := s.GetSessionByRoomCode(ctx, roomCode)
 		if existing == nil {
 			break // Code is unique
 		}
-		
+
 		if i == 4 {
 			return nil, "", fmt.Errorf("failed to generate unique room code after 5 attempts")
 		}
 	}
-	
+
 	// Create new game session with custom room fields
 	// Use temporary placeholder for player2 until opponent joins
 	session := &models.GameSession{
@@ -266,22 +266,22 @@ func (s *gameService) CreateCustomRoom(ctx context.Context, creator string) (*mo
 		IsCustom:    true,
 		CreatedBy:   &creator,
 	}
-	
+
 	// Persist to database
 	if err := s.gameRepo.Create(ctx, session); err != nil {
 		return nil, "", fmt.Errorf("failed to create custom room: %w", err)
 	}
-	
+
 	// Cache the session for fast access
 	s.CacheSession(session)
-	
+
 	// Log room creation
 	s.logger.Info("custom room created",
 		"gameID", session.ID,
 		"roomCode", roomCode,
 		"creator", creator,
 	)
-	
+
 	return session, roomCode, nil
 }
 
@@ -293,48 +293,48 @@ func (s *gameService) JoinCustomRoom(ctx context.Context, roomCode, username str
 	if username == "" {
 		return nil, fmt.Errorf("username cannot be empty")
 	}
-	
+
 	// Normalize room code to uppercase
 	roomCode = strings.ToUpper(strings.TrimSpace(roomCode))
-	
+
 	// Find session by room code
 	session, err := s.GetSessionByRoomCode(ctx, roomCode)
 	if err != nil {
 		return nil, fmt.Errorf("room not found: %w", err)
 	}
-	
+
 	if session == nil {
 		return nil, fmt.Errorf("room with code %s does not exist", roomCode)
 	}
-	
+
 	// Validate room is still waiting for players
 	if session.Status != models.StatusWaiting {
 		return nil, fmt.Errorf("room is no longer available (status: %s)", session.Status)
 	}
-	
+
 	// Check if user is trying to join their own room
 	if session.Player1 == username {
 		return nil, fmt.Errorf("cannot join your own room")
 	}
-	
+
 	// Check if room already has a second player
 	if session.Player2 != "waiting" {
 		return nil, fmt.Errorf("room is already full")
 	}
-	
+
 	// Add player as Player2 and start the game
 	session.Player2 = username
 	session.Status = models.StatusInProgress
 	session.StartTime = time.Now()
-	
+
 	// Persist changes
 	if err := s.gameRepo.Update(ctx, session); err != nil {
 		return nil, fmt.Errorf("failed to join custom room: %w", err)
 	}
-	
+
 	// Update cache
 	s.CacheSession(session)
-	
+
 	// Log player join
 	s.logger.Info("player joined custom room",
 		"gameID", session.ID,
@@ -342,7 +342,7 @@ func (s *gameService) JoinCustomRoom(ctx context.Context, roomCode, username str
 		"player1", session.Player1,
 		"player2", username,
 	)
-	
+
 	// Create game started event
 	event := models.NewGameStartedEvent(session.ID, session.Player1, username)
 	if err := s.eventRepo.Create(ctx, event); err != nil {
@@ -351,7 +351,7 @@ func (s *gameService) JoinCustomRoom(ctx context.Context, roomCode, username str
 			"error", err,
 		)
 	}
-	
+
 	// Send analytics event to Kafka
 	if s.analyticsProducer != nil {
 		go func() {
@@ -363,7 +363,7 @@ func (s *gameService) JoinCustomRoom(ctx context.Context, roomCode, username str
 			}
 		}()
 	}
-	
+
 	return session, nil
 }
 
@@ -372,50 +372,41 @@ func (s *gameService) GetSessionByRoomCode(ctx context.Context, roomCode string)
 	if roomCode == "" {
 		return nil, fmt.Errorf("room code cannot be empty")
 	}
-	
+
 	// Normalize room code
 	roomCode = strings.ToUpper(strings.TrimSpace(roomCode))
-	
-	// Query database for session with this room code
-	// Note: This requires adding a method to the repository
-	sessions, err := s.gameRepo.GetAll(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query sessions: %w", err)
-	}
-	
-	for _, session := range sessions {
-		if session.RoomCode != nil && *session.RoomCode == roomCode {
-			return session, nil
-		}
-	}
-	
-	return nil, nil
-}
-}
 
+	// Query database for session with this room code
+	session, err := s.gameRepo.GetByRoomCode(ctx, roomCode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query session by room code: %w", err)
+	}
+
+	return session, nil
+}
 
 // GetSession retrieves a game session, checking cache first
 func (s *gameService) GetSession(ctx context.Context, gameID string) (*models.GameSession, error) {
 	if gameID == "" {
 		return nil, fmt.Errorf("game ID cannot be empty")
 	}
-	
+
 	// Check cache first
 	if cached, ok := s.GetCachedSession(gameID); ok {
 		return cached, nil
 	}
-	
+
 	// Fetch from database
 	session, err := s.gameRepo.GetByID(ctx, gameID)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Cache active sessions
 	if session.IsActive() {
 		s.CacheSession(session)
 	}
-	
+
 	return session, nil
 }
 
@@ -425,31 +416,31 @@ func (s *gameService) EndSession(ctx context.Context, gameID string, winner *mod
 	if err != nil {
 		return err
 	}
-	
+
 	if !session.IsActive() {
 		return fmt.Errorf("game session is not active")
 	}
-	
+
 	// Update session status
 	now := time.Now()
 	session.Status = models.StatusCompleted
 	session.Winner = winner
 	session.EndTime = &now
-	
+
 	// Persist changes
 	if err := s.gameRepo.Update(ctx, session); err != nil {
 		return fmt.Errorf("failed to end game session: %w", err)
 	}
-	
+
 	// Invalidate cache
 	s.InvalidateCache(gameID)
-	
+
 	s.logger.Info("game session ended",
 		"gameID", gameID,
 		"winner", winner,
 		"reason", reason,
 	)
-	
+
 	return nil
 }
 
@@ -459,7 +450,7 @@ func (s *gameService) GetCurrentTurn(ctx context.Context, gameID string) (string
 	if err != nil {
 		return "", "", err
 	}
-	
+
 	currentPlayer := session.GetCurrentPlayer()
 	return currentPlayer, session.CurrentTurn, nil
 }
@@ -470,26 +461,26 @@ func (s *gameService) SwitchTurn(ctx context.Context, gameID string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	if !session.IsActive() {
 		return fmt.Errorf("cannot switch turn: game is not active")
 	}
-	
+
 	// Switch turn
 	if session.CurrentTurn == models.PlayerColorRed {
 		session.CurrentTurn = models.PlayerColorYellow
 	} else {
 		session.CurrentTurn = models.PlayerColorRed
 	}
-	
+
 	// Update in database
 	if err := s.gameRepo.Update(ctx, session); err != nil {
 		return fmt.Errorf("failed to switch turn: %w", err)
 	}
-	
+
 	// Update cache
 	s.CacheSession(session)
-	
+
 	return nil
 }
 
@@ -499,12 +490,12 @@ func (s *gameService) AssignPlayerColors(ctx context.Context, gameID string) (ma
 	if err != nil {
 		return nil, err
 	}
-	
+
 	colors := map[string]models.PlayerColor{
 		session.Player1: models.PlayerColorRed,    // Player1 is always red
 		session.Player2: models.PlayerColorYellow, // Player2 is always yellow
 	}
-	
+
 	return colors, nil
 }
 
@@ -514,25 +505,25 @@ func (s *gameService) CompleteGame(ctx context.Context, gameID string, winner *m
 	if err != nil {
 		return err
 	}
-	
+
 	if !session.IsActive() {
 		return fmt.Errorf("game is not active")
 	}
-	
+
 	// Calculate game duration
 	now := time.Now()
 	gameDuration := int(now.Sub(session.StartTime).Seconds())
-	
+
 	// Update session
 	session.Status = models.StatusCompleted
 	session.Winner = winner
 	session.EndTime = &now
-	
+
 	// Persist session changes
 	if err := s.gameRepo.Update(ctx, session); err != nil {
 		return fmt.Errorf("failed to complete game: %w", err)
 	}
-	
+
 	// Update player statistics
 	if err := s.updatePlayerStats(ctx, session, winner, gameDuration); err != nil {
 		s.logger.Warn("failed to update player stats",
@@ -540,7 +531,7 @@ func (s *gameService) CompleteGame(ctx context.Context, gameID string, winner *m
 			"error", err,
 		)
 	}
-	
+
 	// Create game completed event
 	winnerUsername := ""
 	loserUsername := ""
@@ -553,7 +544,7 @@ func (s *gameService) CompleteGame(ctx context.Context, gameID string, winner *m
 			loserUsername = session.Player1
 		}
 	}
-	
+
 	event := models.NewGameCompletedEvent(gameID, winnerUsername, loserUsername, gameDuration)
 	if err := s.eventRepo.Create(ctx, event); err != nil {
 		s.logger.Warn("failed to create game completed event",
@@ -561,7 +552,7 @@ func (s *gameService) CompleteGame(ctx context.Context, gameID string, winner *m
 			"error", err,
 		)
 	}
-	
+
 	// Send analytics event to Kafka (Requirement 9.3)
 	if s.analyticsProducer != nil {
 		go func() {
@@ -574,16 +565,16 @@ func (s *gameService) CompleteGame(ctx context.Context, gameID string, winner *m
 			}
 		}()
 	}
-	
+
 	// Invalidate cache
 	s.InvalidateCache(gameID)
-	
+
 	s.logger.Info("game completed",
 		"gameID", gameID,
 		"winner", winnerUsername,
 		"duration", gameDuration,
 	)
-	
+
 	return nil
 }
 
@@ -592,20 +583,19 @@ func (s *gameService) updatePlayerStats(ctx context.Context, session *models.Gam
 	// Determine winners and losers
 	player1Won := winner != nil && *winner == models.PlayerColorRed
 	player2Won := winner != nil && *winner == models.PlayerColorYellow
-	
+
 	// Update player1 stats
 	if err := s.statsRepo.UpdateGameStats(ctx, session.Player1, player1Won, gameDuration); err != nil {
 		return fmt.Errorf("failed to update player1 stats: %w", err)
 	}
-	
+
 	// Update player2 stats
 	if err := s.statsRepo.UpdateGameStats(ctx, session.Player2, player2Won, gameDuration); err != nil {
 		return fmt.Errorf("failed to update player2 stats: %w", err)
 	}
-	
+
 	return nil
 }
-
 
 // GetActiveSessions retrieves all active game sessions
 func (s *gameService) GetActiveSessions(ctx context.Context) ([]*models.GameSession, error) {
@@ -627,10 +617,10 @@ func (s *gameService) CleanupTimedOutSessions(ctx context.Context, timeout time.
 	if err != nil {
 		return 0, fmt.Errorf("failed to get active sessions: %w", err)
 	}
-	
+
 	cleanedCount := 0
 	cutoffTime := time.Now().Add(-timeout)
-	
+
 	for _, session := range sessions {
 		// Check if session has timed out based on last activity
 		lastActivity := session.UpdatedAt
@@ -645,14 +635,14 @@ func (s *gameService) CleanupTimedOutSessions(ctx context.Context, timeout time.
 			cleanedCount++
 		}
 	}
-	
+
 	if cleanedCount > 0 {
 		s.logger.Info("cleaned up timed out sessions",
 			"count", cleanedCount,
 			"timeout", timeout.String(),
 		)
 	}
-	
+
 	return cleanedCount, nil
 }
 
@@ -662,26 +652,26 @@ func (s *gameService) MarkSessionAbandoned(ctx context.Context, gameID string) e
 	if err != nil {
 		return err
 	}
-	
+
 	if !session.IsActive() {
 		return nil // Already not active
 	}
-	
+
 	now := time.Now()
 	session.Status = models.StatusAbandoned
 	session.EndTime = &now
-	
+
 	if err := s.gameRepo.Update(ctx, session); err != nil {
 		return fmt.Errorf("failed to mark session as abandoned: %w", err)
 	}
-	
+
 	// Invalidate cache
 	s.InvalidateCache(gameID)
-	
+
 	s.logger.Info("session marked as abandoned",
 		"gameID", gameID,
 	)
-	
+
 	return nil
 }
 
@@ -690,10 +680,10 @@ func (s *gameService) CacheSession(session *models.GameSession) {
 	if session == nil {
 		return
 	}
-	
+
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
-	
+
 	s.sessionCache[session.ID] = &cachedSession{
 		Session:    session,
 		CachedAt:   time.Now(),
@@ -705,12 +695,12 @@ func (s *gameService) CacheSession(session *models.GameSession) {
 func (s *gameService) GetCachedSession(gameID string) (*models.GameSession, bool) {
 	s.cacheMutex.RLock()
 	defer s.cacheMutex.RUnlock()
-	
+
 	cached, ok := s.sessionCache[gameID]
 	if !ok {
 		return nil, false
 	}
-	
+
 	// Update last access time (requires write lock, so we skip for now)
 	return cached.Session, true
 }
@@ -719,7 +709,7 @@ func (s *gameService) GetCachedSession(gameID string) (*models.GameSession, bool
 func (s *gameService) InvalidateCache(gameID string) {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
-	
+
 	delete(s.sessionCache, gameID)
 }
 
@@ -727,17 +717,17 @@ func (s *gameService) InvalidateCache(gameID string) {
 func (s *gameService) CleanupCache(maxAge time.Duration) int {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
-	
+
 	cutoff := time.Now().Add(-maxAge)
 	removed := 0
-	
+
 	for id, cached := range s.sessionCache {
 		if cached.LastAccess.Before(cutoff) {
 			delete(s.sessionCache, id)
 			removed++
 		}
 	}
-	
+
 	return removed
 }
 
@@ -745,7 +735,7 @@ func (s *gameService) CleanupCache(maxAge time.Duration) int {
 func (s *gameService) GetCacheStats() map[string]interface{} {
 	s.cacheMutex.RLock()
 	defer s.cacheMutex.RUnlock()
-	
+
 	return map[string]interface{}{
 		"cached_sessions": len(s.sessionCache),
 	}
@@ -771,20 +761,20 @@ func (s *gameService) GetActiveSessionCount(ctx context.Context) (int64, error) 
 func (s *gameService) StartCleanupWorker(ctx context.Context, interval time.Duration) {
 	cleanupCtx, cancel := context.WithCancel(ctx)
 	s.cleanupCancel = cancel
-	
+
 	s.cleanupWg.Add(1)
 	go func() {
 		defer s.cleanupWg.Done()
-		
+
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
-		
+
 		s.logger.Info("cleanup worker started",
 			"interval", interval.String(),
 			"sessionTimeout", s.sessionTimeout.String(),
 			"disconnectTimeout", s.disconnectTimeout.String(),
 		)
-		
+
 		for {
 			select {
 			case <-cleanupCtx.Done():
@@ -795,16 +785,16 @@ func (s *gameService) StartCleanupWorker(ctx context.Context, interval time.Dura
 				if _, err := s.CleanupTimedOutSessions(cleanupCtx, s.sessionTimeout); err != nil {
 					s.logger.Error("failed to cleanup timed out sessions", "error", err)
 				}
-				
+
 				// Handle player disconnection timeouts
 				s.handleDisconnectionTimeouts(cleanupCtx)
-				
+
 				// Clean up stale cache entries
 				removed := s.CleanupCache(s.sessionTimeout)
 				if removed > 0 {
 					s.logger.Debug("cleaned up stale cache entries", "count", removed)
 				}
-				
+
 				// Clean up old disconnection tracking entries
 				s.cleanupDisconnectionTracking()
 			}
@@ -826,22 +816,22 @@ func (s *gameService) MarkPlayerDisconnected(ctx context.Context, gameID string,
 	if gameID == "" || username == "" {
 		return fmt.Errorf("gameID and username cannot be empty")
 	}
-	
+
 	// Verify the session exists and is active
 	session, err := s.GetSession(ctx, gameID)
 	if err != nil {
 		return err
 	}
-	
+
 	if !session.IsActive() {
 		return fmt.Errorf("game session is not active")
 	}
-	
+
 	// Verify the player is part of this game
 	if session.Player1 != username && session.Player2 != username {
 		return fmt.Errorf("player %s is not part of game %s", username, gameID)
 	}
-	
+
 	// Track disconnection time
 	s.disconnectMutex.Lock()
 	if s.disconnectedPlayers[gameID] == nil {
@@ -849,7 +839,7 @@ func (s *gameService) MarkPlayerDisconnected(ctx context.Context, gameID string,
 	}
 	s.disconnectedPlayers[gameID][username] = time.Now()
 	s.disconnectMutex.Unlock()
-	
+
 	// Create player left event in database
 	event := &models.GameEvent{
 		EventType: models.EventPlayerLeft,
@@ -867,7 +857,7 @@ func (s *gameService) MarkPlayerDisconnected(ctx context.Context, gameID string,
 			"error", err,
 		)
 	}
-	
+
 	// Send analytics event to Kafka (Requirement 9.4)
 	if s.analyticsProducer != nil {
 		go func() {
@@ -880,13 +870,13 @@ func (s *gameService) MarkPlayerDisconnected(ctx context.Context, gameID string,
 			}
 		}()
 	}
-	
+
 	s.logger.Info("player disconnected",
 		"gameID", gameID,
 		"player", username,
 		"timeout", s.disconnectTimeout.String(),
 	)
-	
+
 	return nil
 }
 
@@ -896,17 +886,17 @@ func (s *gameService) MarkPlayerReconnected(ctx context.Context, gameID string, 
 	if gameID == "" || username == "" {
 		return fmt.Errorf("gameID and username cannot be empty")
 	}
-	
+
 	// Verify the session exists and is active
 	session, err := s.GetSession(ctx, gameID)
 	if err != nil {
 		return err
 	}
-	
+
 	if !session.IsActive() {
 		return fmt.Errorf("game session is not active")
 	}
-	
+
 	// Remove from disconnected tracking
 	s.disconnectMutex.Lock()
 	if s.disconnectedPlayers[gameID] != nil {
@@ -916,7 +906,7 @@ func (s *gameService) MarkPlayerReconnected(ctx context.Context, gameID string, 
 		}
 	}
 	s.disconnectMutex.Unlock()
-	
+
 	// Create player reconnected event in database
 	event := &models.GameEvent{
 		EventType: models.EventPlayerReconnected,
@@ -932,7 +922,7 @@ func (s *gameService) MarkPlayerReconnected(ctx context.Context, gameID string, 
 			"error", err,
 		)
 	}
-	
+
 	// Send analytics event to Kafka (Requirement 9.4)
 	if s.analyticsProducer != nil {
 		go func() {
@@ -945,12 +935,12 @@ func (s *gameService) MarkPlayerReconnected(ctx context.Context, gameID string, 
 			}
 		}()
 	}
-	
+
 	s.logger.Info("player reconnected",
 		"gameID", gameID,
 		"player", username,
 	)
-	
+
 	return nil
 }
 
@@ -958,11 +948,11 @@ func (s *gameService) MarkPlayerReconnected(ctx context.Context, gameID string, 
 func (s *gameService) GetDisconnectedPlayers(gameID string) map[string]time.Time {
 	s.disconnectMutex.RLock()
 	defer s.disconnectMutex.RUnlock()
-	
+
 	if s.disconnectedPlayers[gameID] == nil {
 		return nil
 	}
-	
+
 	// Return a copy to avoid race conditions
 	result := make(map[string]time.Time)
 	for username, disconnectTime := range s.disconnectedPlayers[gameID] {
@@ -978,11 +968,11 @@ func (s *gameService) HandleDisconnectionTimeout(ctx context.Context, gameID str
 	if err != nil {
 		return err
 	}
-	
+
 	if !session.IsActive() {
 		return nil // Game already ended
 	}
-	
+
 	// Determine the winner (the opponent who stayed connected)
 	var winner models.PlayerColor
 	if session.Player1 == username {
@@ -990,12 +980,12 @@ func (s *gameService) HandleDisconnectionTimeout(ctx context.Context, gameID str
 	} else {
 		winner = models.PlayerColorRed // Player1 wins
 	}
-	
+
 	// Complete the game with the connected player as winner
 	if err := s.CompleteGame(ctx, gameID, &winner); err != nil {
 		return fmt.Errorf("failed to complete game after disconnection timeout: %w", err)
 	}
-	
+
 	// Remove from disconnection tracking
 	s.disconnectMutex.Lock()
 	if s.disconnectedPlayers[gameID] != nil {
@@ -1005,13 +995,13 @@ func (s *gameService) HandleDisconnectionTimeout(ctx context.Context, gameID str
 		}
 	}
 	s.disconnectMutex.Unlock()
-	
+
 	s.logger.Info("game forfeited due to disconnection timeout",
 		"gameID", gameID,
 		"disconnectedPlayer", username,
 		"winner", winner,
 	)
-	
+
 	return nil
 }
 
@@ -1027,7 +1017,7 @@ func (s *gameService) handleDisconnectionTimeouts(ctx context.Context) {
 		}
 	}
 	s.disconnectMutex.RUnlock()
-	
+
 	now := time.Now()
 	for gameID, players := range toProcess {
 		for username, disconnectTime := range players {
@@ -1048,7 +1038,7 @@ func (s *gameService) handleDisconnectionTimeouts(ctx context.Context) {
 func (s *gameService) cleanupDisconnectionTracking() {
 	s.disconnectMutex.Lock()
 	defer s.disconnectMutex.Unlock()
-	
+
 	for gameID := range s.disconnectedPlayers {
 		// Check if game is still active (use cached session to avoid DB call)
 		if cached, ok := s.sessionCache[gameID]; ok {
@@ -1063,7 +1053,7 @@ func (s *gameService) cleanupDisconnectionTracking() {
 func (s *gameService) IsPlayerDisconnected(gameID string, username string) bool {
 	s.disconnectMutex.RLock()
 	defer s.disconnectMutex.RUnlock()
-	
+
 	if s.disconnectedPlayers[gameID] == nil {
 		return false
 	}
@@ -1075,16 +1065,16 @@ func (s *gameService) IsPlayerDisconnected(gameID string, username string) bool 
 func (s *gameService) GetDisconnectionTimeRemaining(gameID string, username string) time.Duration {
 	s.disconnectMutex.RLock()
 	defer s.disconnectMutex.RUnlock()
-	
+
 	if s.disconnectedPlayers[gameID] == nil {
 		return 0
 	}
-	
+
 	disconnectTime, exists := s.disconnectedPlayers[gameID][username]
 	if !exists {
 		return 0
 	}
-	
+
 	elapsed := time.Since(disconnectTime)
 	remaining := s.disconnectTimeout - elapsed
 	if remaining < 0 {

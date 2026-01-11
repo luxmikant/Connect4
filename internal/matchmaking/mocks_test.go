@@ -132,3 +132,28 @@ func (m *MockGameService) GetCacheStats() map[string]interface{} {
 	args := m.Called()
 	return args.Get(0).(map[string]interface{})
 }
+
+// Custom room methods
+func (m *MockGameService) CreateCustomRoom(ctx context.Context, creator string) (*models.GameSession, string, error) {
+	args := m.Called(ctx, creator)
+	if args.Get(0) == nil {
+		return nil, "", args.Error(2)
+	}
+	return args.Get(0).(*models.GameSession), args.String(1), args.Error(2)
+}
+
+func (m *MockGameService) JoinCustomRoom(ctx context.Context, roomCode, username string) (*models.GameSession, error) {
+	args := m.Called(ctx, roomCode, username)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GameSession), args.Error(1)
+}
+
+func (m *MockGameService) GetSessionByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error) {
+	args := m.Called(ctx, roomCode)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GameSession), args.Error(1)
+}

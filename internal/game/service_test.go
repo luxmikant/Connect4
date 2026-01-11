@@ -92,6 +92,14 @@ func (m *MockGameSessionRepository) BulkUpdateStatus(ctx context.Context, sessio
 	return args.Error(0)
 }
 
+func (m *MockGameSessionRepository) GetByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error) {
+	args := m.Called(ctx, roomCode)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GameSession), args.Error(1)
+}
+
 // MockPlayerStatsRepository is a mock implementation of PlayerStatsRepository
 type MockPlayerStatsRepository struct {
 	mock.Mock
@@ -451,7 +459,7 @@ func TestPlayerDisconnection(t *testing.T) {
 			Status:      models.StatusInProgress,
 			CurrentTurn: models.PlayerColorRed,
 		}
-		
+
 		// First disconnect
 		gameRepo.On("GetByID", ctx, "game-130").Return(session, nil).Twice()
 		eventRepo.On("Create", ctx, mock.AnythingOfType("*models.GameEvent")).Return(nil).Twice()
@@ -468,10 +476,10 @@ func TestPlayerDisconnection(t *testing.T) {
 	t.Run("fails for player not in game", func(t *testing.T) {
 		service, gameRepo, _, _, _ := createTestService()
 		session := &models.GameSession{
-			ID:          "game-131",
-			Player1:     "alice",
-			Player2:     "bob",
-			Status:      models.StatusInProgress,
+			ID:      "game-131",
+			Player1: "alice",
+			Player2: "bob",
+			Status:  models.StatusInProgress,
 		}
 		gameRepo.On("GetByID", ctx, "game-131").Return(session, nil).Once()
 
@@ -488,10 +496,10 @@ func TestGetDisconnectionTimeRemaining(t *testing.T) {
 	t.Run("returns remaining time for disconnected player", func(t *testing.T) {
 		service, gameRepo, _, _, eventRepo := createTestService()
 		session := &models.GameSession{
-			ID:          "game-132",
-			Player1:     "alice",
-			Player2:     "bob",
-			Status:      models.StatusInProgress,
+			ID:      "game-132",
+			Player1: "alice",
+			Player2: "bob",
+			Status:  models.StatusInProgress,
 		}
 		gameRepo.On("GetByID", ctx, "game-132").Return(session, nil).Once()
 		eventRepo.On("Create", ctx, mock.AnythingOfType("*models.GameEvent")).Return(nil).Once()
@@ -516,10 +524,10 @@ func TestCacheOperations(t *testing.T) {
 
 	t.Run("caches and retrieves session", func(t *testing.T) {
 		session := &models.GameSession{
-			ID:          "game-123",
-			Player1:     "alice",
-			Player2:     "bob",
-			Status:      models.StatusInProgress,
+			ID:      "game-123",
+			Player1: "alice",
+			Player2: "bob",
+			Status:  models.StatusInProgress,
 		}
 
 		service.CacheSession(session)
@@ -531,10 +539,10 @@ func TestCacheOperations(t *testing.T) {
 
 	t.Run("invalidates cache", func(t *testing.T) {
 		session := &models.GameSession{
-			ID:          "game-456",
-			Player1:     "alice",
-			Player2:     "bob",
-			Status:      models.StatusInProgress,
+			ID:      "game-456",
+			Player1: "alice",
+			Player2: "bob",
+			Status:  models.StatusInProgress,
 		}
 
 		service.CacheSession(session)
@@ -546,10 +554,10 @@ func TestCacheOperations(t *testing.T) {
 
 	t.Run("returns cache stats", func(t *testing.T) {
 		session := &models.GameSession{
-			ID:          "game-789",
-			Player1:     "alice",
-			Player2:     "bob",
-			Status:      models.StatusInProgress,
+			ID:      "game-789",
+			Player1: "alice",
+			Player2: "bob",
+			Status:  models.StatusInProgress,
 		}
 
 		service.CacheSession(session)
