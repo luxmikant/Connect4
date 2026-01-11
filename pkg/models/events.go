@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"time"
 
@@ -19,15 +20,38 @@ const (
 	EventPlayerReconnected EventType = "player_reconnected"
 )
 
+// EventMetadata represents metadata for game events
+type EventMetadata map[string]interface{}
+
+// Scan implements the sql.Scanner interface for GORM
+func (em *EventMetadata) Scan(value interface{}) error {
+	if value == nil {
+		*em = make(EventMetadata)
+		return nil
+	}
+	
+	bytes, ok := value.([]byte)
+	if !ok {
+		return ErrInvalidEventData
+	}
+	
+	return json.Unmarshal(bytes, em)
+}
+
+// Value implements the driver.Valuer interface for GORM
+func (em EventMetadata) Value() (driver.Value, error) {
+	return json.Marshal(em)
+}
+
 // GameEvent represents an analytics event
 type GameEvent struct {
-	ID        string                 `json:"id" gorm:"primaryKey" validate:"required"`
-	EventType EventType              `json:"eventType" gorm:"type:varchar(50);not null;index" validate:"required"`
-	GameID    string                 `json:"gameId" gorm:"not null;index" validate:"required"`
-	PlayerID  string                 `json:"playerId" gorm:"not null" validate:"required"`
-	Timestamp time.Time              `json:"timestamp" gorm:"autoCreateTime;index"`
-	Metadata  map[string]interface{} `json:"metadata" gorm:"type:jsonb"`
-	CreatedAt time.Time              `json:"createdAt" gorm:"autoCreateTime"`
+	ID        string        `json:"id" gorm:"primaryKey" validate:"required"`
+	EventType EventType     `json:"eventType" gorm:"type:varchar(50);not null;index" validate:"required"`
+	GameID    string        `json:"gameId" gorm:"not null;index" validate:"required"`
+	PlayerID  string        `json:"playerId" gorm:"not null" validate:"required"`
+	Timestamp time.Time     `json:"timestamp" gorm:"autoCreateTime;index"`
+	Metadata  EventMetadata `json:"metadata" gorm:"type:jsonb"`
+	CreatedAt time.Time     `json:"createdAt" gorm:"autoCreateTime"`
 }
 
 // TableName returns the table name for GORM
@@ -43,25 +67,6 @@ func (ge *GameEvent) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// Scan implements the sql.Scanner interface for GORM
-func (ge *GameEvent) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	
-	bytes, ok := value.([]byte)
-	if !ok {
-		return ErrInvalidEventData
-	}
-	
-	return json.Unmarshal(bytes, &ge.Metadata)
-}
-
-// Value implements the driver.Valuer interface for GORM
-func (ge GameEvent) Value() (interface{}, error) {
-	return json.Marshal(ge.Metadata)
-}
-
 // NewGameStartedEvent creates a new game started event
 func NewGameStartedEvent(gameID, player1, player2 string) *GameEvent {
 	return &GameEvent{
@@ -69,7 +74,7 @@ func NewGameStartedEvent(gameID, player1, player2 string) *GameEvent {
 		GameID:    gameID,
 		PlayerID:  player1,
 		Timestamp: time.Now(),
-		Metadata: map[string]interface{}{
+		Metadata: EventMetadata{
 			"player1": player1,
 			"player2": player2,
 		},
@@ -83,7 +88,7 @@ func NewMoveMadeEvent(gameID, playerID string, column, row int) *GameEvent {
 		GameID:    gameID,
 		PlayerID:  playerID,
 		Timestamp: time.Now(),
-		Metadata: map[string]interface{}{
+		Metadata: EventMetadata{
 			"column": column,
 			"row":    row,
 		},
@@ -97,7 +102,7 @@ func NewGameCompletedEvent(gameID, winner, loser string, duration int) *GameEven
 		GameID:    gameID,
 		PlayerID:  winner,
 		Timestamp: time.Now(),
-		Metadata: map[string]interface{}{
+		Metadata: EventMetadata{
 			"winner":   winner,
 			"loser":    loser,
 			"duration": duration,
@@ -112,6 +117,6 @@ func NewPlayerJoinedEvent(gameID, playerID string) *GameEvent {
 		GameID:    gameID,
 		PlayerID:  playerID,
 		Timestamp: time.Now(),
-		Metadata:  map[string]interface{}{},
+		Metadata:  EventMetadata{},
 	}
 }

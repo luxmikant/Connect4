@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -52,6 +54,14 @@ type RedisConfig struct {
 
 // Load loads configuration from environment variables and config files
 func Load() (*Config, error) {
+	// Load .env file first (if it exists)
+	if err := godotenv.Load(); err != nil {
+		// .env file is optional, so we don't fail if it doesn't exist
+		if !os.IsNotExist(err) {
+			fmt.Printf("Warning: Could not load .env file: %v\n", err)
+		}
+	}
+
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
@@ -70,6 +80,30 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
+
+	// Bind specific environment variables to config keys
+	viper.BindEnv("database.url", "DATABASE_URL")
+	viper.BindEnv("database.max_open_conns", "DATABASE_MAX_OPEN_CONNS")
+	viper.BindEnv("database.max_idle_conns", "DATABASE_MAX_IDLE_CONNS")
+	viper.BindEnv("database.conn_max_lifetime", "DATABASE_CONN_MAX_LIFETIME")
+	
+	viper.BindEnv("kafka.bootstrap_servers", "KAFKA_BOOTSTRAP_SERVERS")
+	viper.BindEnv("kafka.api_key", "KAFKA_API_KEY")
+	viper.BindEnv("kafka.api_secret", "KAFKA_API_SECRET")
+	viper.BindEnv("kafka.topic", "KAFKA_TOPIC")
+	viper.BindEnv("kafka.consumer_group", "KAFKA_CONSUMER_GROUP")
+	
+	viper.BindEnv("redis.url", "REDIS_URL")
+	viper.BindEnv("redis.password", "REDIS_PASSWORD")
+	viper.BindEnv("redis.db", "REDIS_DB")
+	
+	viper.BindEnv("server.port", "SERVER_PORT")
+	viper.BindEnv("server.host", "SERVER_HOST")
+	viper.BindEnv("server.cors_origins", "SERVER_CORS_ORIGINS")
+	viper.BindEnv("server.read_timeout", "SERVER_READ_TIMEOUT")
+	viper.BindEnv("server.write_timeout", "SERVER_WRITE_TIMEOUT")
+	
+	viper.BindEnv("environment", "ENVIRONMENT")
 
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {

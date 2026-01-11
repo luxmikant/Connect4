@@ -2,7 +2,6 @@ package models_test
 
 import (
 	"testing"
-	"time"
 
 	"connect4-multiplayer/pkg/models"
 )

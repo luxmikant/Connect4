@@ -19,5 +19,6 @@ CREATE INDEX IF NOT EXISTS idx_player_stats_wins ON player_stats(games_won DESC)
 CREATE INDEX IF NOT EXISTS idx_player_stats_win_rate ON player_stats(win_rate DESC);
 
 -- Add trigger to update updated_at column
+DROP TRIGGER IF EXISTS update_player_stats_updated_at ON player_stats;
 CREATE TRIGGER update_player_stats_updated_at BEFORE UPDATE ON player_stats
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

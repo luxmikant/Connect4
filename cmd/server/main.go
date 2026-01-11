@@ -11,12 +11,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"connect4-multiplayer/internal/api/handlers"
+	"connect4-multiplayer/internal/api/routes"
 	"connect4-multiplayer/internal/config"
 	"connect4-multiplayer/internal/database"
+	"connect4-multiplayer/internal/game"
+	"connect4-multiplayer/internal/websocket"
 )
 
 // @title Connect 4 Multiplayer API
@@ -41,10 +42,32 @@ func main() {
 	}
 
 	// Initialize database
-	db, err := database.Initialize(cfg.Database)
+	_, repoManager, err := database.Initialize(cfg.Database)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
+
+	// Initialize services
+	gameService := game.NewGameService(
+		repoManager.GameSession,
+		repoManager.PlayerStats,
+		repoManager.Move,
+		repoManager.GameEvent,
+		game.DefaultServiceConfig(),
+	)
+
+	// Initialize WebSocket service
+	wsService := websocket.NewService(gameService)
+	
+	// Start WebSocket service
+	ctx := context.Background()
+	if err := wsService.Start(ctx); err != nil {
+		log.Fatalf("Failed to start WebSocket service: %v", err)
+	}
+
+	// Initialize handlers
+	gameHandler := handlers.NewGameHandler(gameService)
+	leaderboardHandler := handlers.NewLeaderboardHandler(repoManager.PlayerStats)
 
 	// Set Gin mode based on environment
 	if cfg.Environment == "production" {
@@ -52,50 +75,17 @@ func main() {
 	}
 
 	// Create Gin router
-	router := gin.Default()
+	router := gin.New()
 
-	// Add middleware
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-
-	// CORS middleware
-	router.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	})
-
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":    "healthy",
-			"timestamp": time.Now().UTC(),
-			"version":   "1.0.0",
-		})
-	})
-
-	// API routes
-	v1 := router.Group("/api/v1")
-	{
-		v1.GET("/ping", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "pong"})
-		})
-	}
-
-	// Swagger documentation
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Setup routes and middleware
+	routes.SetupRoutes(router, cfg, gameHandler, leaderboardHandler, wsService.GetWebSocketHandler())
 
 	// Create HTTP server
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler: router,
+		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:      router,
+		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
 	}
 
 	// Start server in a goroutine
@@ -115,6 +105,11 @@ func main() {
 	// Graceful shutdown with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// Stop WebSocket service
+	if err := wsService.Stop(); err != nil {
+		log.Printf("Error stopping WebSocket service: %v", err)
+	}
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)

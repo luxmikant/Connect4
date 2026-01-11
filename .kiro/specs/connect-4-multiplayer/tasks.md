@@ -58,11 +58,11 @@ This implementation plan breaks down the Connect 4 multiplayer system into discr
     - **Property 7: Game Move Validation and Physics**
     - **Validates: Requirements 5.1, 5.2**
 
-  - [ ] 3.3 Write property test for win detection
+  - [x] 3.3 Write property test for win detection
     - **Property 8: Win and Draw Detection**
     - **Validates: Requirements 5.3, 5.4**
 
-  - [ ] 3.4 Implement game session management with PostgreSQL optimization
+  - [x] 3.4 Implement game session management with PostgreSQL optimization
     - Create GameService with session lifecycle management
     - Add turn management and player color assignment
     - Implement game completion and statistics updates
@@ -70,79 +70,79 @@ This implementation plan breaks down the Connect 4 multiplayer system into discr
     - Add session cleanup and timeout handling
     - _Requirements: 1.4, 5.5_
 
-  - [ ] 3.5 Write unit tests for game engine
+  - [x] 3.5 Write unit tests for game engine
     - Test specific win scenarios and edge cases
     - Test invalid move handling
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 4. Bot AI Implementation
-  - [ ] 4.1 Implement minimax algorithm with alpha-beta pruning
+- [x] 4. Bot AI Implementation
+  - [x] 4.1 Implement minimax algorithm with alpha-beta pruning
     - Create BotAI interface and implementation
     - Implement position evaluation function
     - Add configurable search depth based on difficulty
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.6_
 
-  - [ ] 4.2 Write property test for bot strategic decisions
+  - [x] 4.2 Write property test for bot strategic decisions
     - **Property 2: Bot Strategic Decision Making**
     - **Validates: Requirements 2.2, 2.3, 2.4, 2.6**
 
-  - [ ] 4.3 Write property test for bot response time
+  - [x] 4.3 Write property test for bot response time
     - **Property 3: Bot Response Time**
     - **Validates: Requirements 2.1**
 
-  - [ ] 4.4 Implement bot difficulty levels
+  - [x] 4.4 Implement bot difficulty levels
     - Create BotPlayer entity with difficulty settings
     - Add human-like delay simulation
     - Implement bot player creation and management
     - _Requirements: 2.1, 2.6_
 
-- [ ] 5. Checkpoint - Core Game Logic Complete
+- [x] 5. Checkpoint - Core Game Logic Complete
   - Ensure all game engine and bot tests pass
   - Verify game sessions can be created and completed
   - Ask the user if questions arise
 
-- [ ] 6. REST API and HTTP Handlers
-  - [ ] 6.1 Set up Gin web framework with middleware
+- [x] 6. REST API and HTTP Handlers
+  - [x] 6.1 Set up Gin web framework with middleware
     - Configure CORS, logging, recovery middleware
     - Set up request validation with go-playground/validator
     - Add Swagger documentation generation
     - _Requirements: API foundation_
 
-  - [ ] 6.2 Implement game management endpoints
+  - [x] 6.2 Implement game management endpoints
     - POST /api/v1/games (create game)
     - GET /api/v1/games/:id (get game state)
     - POST /api/v1/games/:id/moves (make move)
     - Add proper error handling and validation
     - _Requirements: 5.1, 5.2, 5.5_
 
-  - [ ] 6.3 Implement leaderboard endpoints
+  - [x] 6.3 Implement leaderboard endpoints
     - GET /api/v1/leaderboard (get top players)
     - GET /api/v1/players/:id/stats (get player statistics)
     - _Requirements: 7.2, 7.4_
 
-  - [ ] 6.4 Write integration tests for REST API
+  - [x] 6.4 Write integration tests for REST API
     - Test complete game flow via HTTP endpoints
     - Test error conditions and validation
     - _Requirements: 5.1, 5.2, 7.2, 7.4_
 
-- [ ] 7. WebSocket Real-time Communication
-  - [ ] 7.1 Implement WebSocket connection management
+- [x] 7. WebSocket Real-time Communication
+  - [x] 7.1 Implement WebSocket connection management
     - Set up gorilla/websocket with connection pooling
     - Implement connection authentication and session mapping
     - Add automatic reconnection support
     - _Requirements: 3.1, 3.2, 3.3, 4.1, 4.2_
 
-  - [ ] 7.2 Write property test for real-time synchronization
+  - [x] 7.2 Write property test for real-time synchronization
     - **Property 4: Real-time Game State Synchronization**
     - **Validates: Requirements 3.1, 3.2, 3.3**
 
-  - [ ] 7.3 Implement WebSocket message handling
+  - [x] 7.3 Implement WebSocket message handling
     - Create message types for game events
     - Implement move broadcasting and state updates
     - Add connection state management and cleanup
     - _Requirements: 3.1, 3.2, 4.4, 4.5_
 
-  - [ ] 7.4 Write property test for session reconnection
+  - [x] 7.4 Write property test for session reconnection
     - **Property 6: Session Reconnection Management**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5**
 

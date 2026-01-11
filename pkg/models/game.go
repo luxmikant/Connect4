@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"time"
 
@@ -195,6 +196,6 @@ func (b *Board) Scan(value interface{}) error {
 }
 
 // Value implements the driver.Valuer interface for GORM
-func (b Board) Value() (interface{}, error) {
+func (b Board) Value() (driver.Value, error) {
 	return json.Marshal(b)
 }

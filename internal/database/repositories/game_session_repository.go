@@ -201,3 +201,107 @@ func (r *gameSessionRepository) GetGameHistory(ctx context.Context, limit, offse
 
 	return sessions, nil
 }
+
+
+// GetActiveSessionByPlayer retrieves an active session for a specific player
+// Optimized query using index on status and player columns
+func (r *gameSessionRepository) GetActiveSessionByPlayer(ctx context.Context, username string) (*models.GameSession, error) {
+	if username == "" {
+		return nil, fmt.Errorf("username cannot be empty")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var session models.GameSession
+	err := r.db.WithContext(ctx).
+		Where("status IN ?", []models.GameStatus{
+			models.StatusWaiting,
+			models.StatusInProgress,
+		}).
+		Where("player1 = ? OR player2 = ?", username, username).
+		Order("created_at DESC").
+		First(&session).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // No active session found
+		}
+		return nil, fmt.Errorf("failed to get active session by player: %w", err)
+	}
+
+	return &session, nil
+}
+
+// GetActiveSessionCount returns the count of active sessions
+// Optimized count query using index on status
+func (r *gameSessionRepository) GetActiveSessionCount(ctx context.Context) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.GameSession{}).
+		Where("status IN ?", []models.GameStatus{
+			models.StatusWaiting,
+			models.StatusInProgress,
+		}).
+		Count(&count).Error
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to get active session count: %w", err)
+	}
+
+	return count, nil
+}
+
+// GetTimedOutSessions retrieves sessions that have been inactive for longer than the timeout
+// Optimized query using index on status and updated_at
+func (r *gameSessionRepository) GetTimedOutSessions(ctx context.Context, timeout time.Duration) ([]*models.GameSession, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	cutoffTime := time.Now().Add(-timeout)
+
+	var sessions []*models.GameSession
+	err := r.db.WithContext(ctx).
+		Where("status IN ?", []models.GameStatus{
+			models.StatusWaiting,
+			models.StatusInProgress,
+		}).
+		Where("updated_at < ?", cutoffTime).
+		Find(&sessions).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get timed out sessions: %w", err)
+	}
+
+	return sessions, nil
+}
+
+// BulkUpdateStatus updates the status of multiple sessions in a single query
+// Optimized bulk update for session cleanup
+func (r *gameSessionRepository) BulkUpdateStatus(ctx context.Context, sessionIDs []string, status models.GameStatus) error {
+	if len(sessionIDs) == 0 {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	now := time.Now()
+	result := r.db.WithContext(ctx).
+		Model(&models.GameSession{}).
+		Where("id IN ?", sessionIDs).
+		Updates(map[string]interface{}{
+			"status":     status,
+			"end_time":   now,
+			"updated_at": now,
+		})
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to bulk update session status: %w", result.Error)
+	}
+
+	return nil
+}

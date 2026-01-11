@@ -36,15 +36,34 @@ A real-time multiplayer Connect 4 game system built with Go backend, React front
    cd connect4-multiplayer
    ```
 
-2. **Set up environment variables**
+2. **Set up credentials** (Choose one option)
+   
+   **Option A: Interactive Setup (Recommended)**
    ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
+   make setup-credentials
+   ```
+   
+   **Option B: Manual Setup**
+   ```bash
+   # Create environment file
+   make create-env
+   
+   # Edit .env with your Supabase and Confluent Cloud credentials
+   # See CREDENTIALS_SETUP.md for detailed instructions
+   ```
+   
+   **Option C: Local Development Only**
+   ```bash
+   # Use local services (no cloud setup required)
+   make docker-up
+   # Uses local PostgreSQL, Redis, and Kafka
    ```
 
-3. **Start infrastructure services**
+3. **Validate your setup**
    ```bash
-   docker-compose up -d postgres redis kafka
+   # Test database and Kafka connections
+   make test-db
+   make test-kafka
    ```
 
 4. **Install development tools**
@@ -54,7 +73,7 @@ A real-time multiplayer Connect 4 game system built with Go backend, React front
 
 5. **Run database migrations**
    ```bash
-   make migrate-up
+   make migrate
    ```
 
 6. **Start the development server**
@@ -63,6 +82,8 @@ A real-time multiplayer Connect 4 game system built with Go backend, React front
    ```
 
 The server will start at `http://localhost:8080` with hot reload enabled.
+
+> 📋 **Need help with credentials?** See [CREDENTIALS_SETUP.md](CREDENTIALS_SETUP.md) for a quick setup guide or [docs/cloud-setup-guide.md](docs/cloud-setup-guide.md) for detailed instructions.
 
 ### Using Docker (Full Stack)
 
@@ -88,6 +109,13 @@ make dev              # Start with hot reload
 make run-server       # Run server directly
 make run-analytics    # Run analytics service
 
+# Credential Setup
+make setup-credentials # Interactive credential setup
+make create-env       # Create .env from template
+make validate-env     # Validate environment config
+make test-db          # Test database connection
+make test-kafka       # Test Kafka connection
+
 # Building
 make build           # Build all binaries
 make build-prod      # Build for production
@@ -103,7 +131,8 @@ make fmt             # Format code
 make vet             # Run go vet
 
 # Database
-make migrate-up      # Run migrations
+make migrate         # Run migrations
+make migrate-up      # Run migrations (with binary)
 make migrate-down    # Rollback migrations
 
 # Documentation

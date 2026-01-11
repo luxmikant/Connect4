@@ -20,5 +20,6 @@ CREATE INDEX IF NOT EXISTS idx_game_sessions_player2 ON game_sessions(player2);
 CREATE INDEX IF NOT EXISTS idx_game_sessions_created_at ON game_sessions(created_at);
 
 -- Add trigger to update updated_at column
+DROP TRIGGER IF EXISTS update_game_sessions_updated_at ON game_sessions;
 CREATE TRIGGER update_game_sessions_updated_at BEFORE UPDATE ON game_sessions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

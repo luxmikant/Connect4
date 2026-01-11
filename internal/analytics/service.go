@@ -2,11 +2,14 @@ package analytics
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl/plain"
 	"gorm.io/gorm"
 
 	"connect4-multiplayer/internal/config"
@@ -15,46 +18,48 @@ import (
 
 // Service handles analytics event processing
 type Service struct {
-	consumer *kafka.Consumer
-	db       *gorm.DB
+	reader *kafka.Reader
+	db     *gorm.DB
 }
 
 // NewService creates a new analytics service
 func NewService(cfg config.KafkaConfig, db *gorm.DB) (*Service, error) {
-	// Configure Kafka consumer
-	configMap := kafka.ConfigMap{
-		"bootstrap.servers": cfg.BootstrapServers,
-		"group.id":          cfg.ConsumerGroup,
-		"auto.offset.reset": "earliest",
+	// Configure Kafka reader
+	readerConfig := kafka.ReaderConfig{
+		Brokers:     []string{cfg.BootstrapServers},
+		Topic:       cfg.Topic,
+		GroupID:     cfg.ConsumerGroup,
+		StartOffset: kafka.FirstOffset,
+		MinBytes:    10e3, // 10KB
+		MaxBytes:    10e6, // 10MB
 	}
 
 	// Add authentication if provided
 	if cfg.APIKey != "" && cfg.APISecret != "" {
-		configMap["security.protocol"] = "SASL_SSL"
-		configMap["sasl.mechanisms"] = "PLAIN"
-		configMap["sasl.username"] = cfg.APIKey
-		configMap["sasl.password"] = cfg.APISecret
+		mechanism := plain.Mechanism{
+			Username: cfg.APIKey,
+			Password: cfg.APISecret,
+		}
+		
+		readerConfig.Dialer = &kafka.Dialer{
+			Timeout:       10 * time.Second,
+			DualStack:     true,
+			SASLMechanism: mechanism,
+			TLS:           &tls.Config{},
+		}
 	}
 
-	consumer, err := kafka.NewConsumer(&configMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Kafka consumer: %w", err)
-	}
-
-	// Subscribe to topic
-	if err := consumer.Subscribe(cfg.Topic, nil); err != nil {
-		return nil, fmt.Errorf("failed to subscribe to topic: %w", err)
-	}
+	reader := kafka.NewReader(readerConfig)
 
 	return &Service{
-		consumer: consumer,
-		db:       db,
+		reader: reader,
+		db:     db,
 	}, nil
 }
 
 // Start starts the analytics service
 func (s *Service) Start(ctx context.Context) error {
-	defer s.consumer.Close()
+	defer s.reader.Close()
 
 	log.Println("Analytics service started, waiting for events...")
 
@@ -64,19 +69,24 @@ func (s *Service) Start(ctx context.Context) error {
 			log.Println("Analytics service stopping...")
 			return nil
 		default:
-			// Poll for messages
-			msg, err := s.consumer.ReadMessage(100)
+			// Read message with timeout
+			msg, err := s.reader.FetchMessage(ctx)
 			if err != nil {
-				if err.(kafka.Error).Code() == kafka.ErrTimedOut {
-					continue
+				if err == context.Canceled {
+					return nil
 				}
 				log.Printf("Consumer error: %v", err)
 				continue
 			}
 
 			// Process the message
-			if err := s.processMessage(msg); err != nil {
+			if err := s.processMessage(&msg); err != nil {
 				log.Printf("Failed to process message: %v", err)
+			}
+
+			// Commit the message
+			if err := s.reader.CommitMessages(ctx, msg); err != nil {
+				log.Printf("Failed to commit message: %v", err)
 			}
 		}
 	}

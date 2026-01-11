@@ -18,22 +18,24 @@ import (
 
 // genPlayer generates a random Player for property testing
 func genPlayer() gopter.Gen {
-	return gen.Struct(reflect.TypeOf(&models.Player{}), map[string]gopter.Gen{
+	return gen.Struct(reflect.TypeOf(models.Player{}), map[string]gopter.Gen{
 		"Username": gen.AlphaString().SuchThat(func(s string) bool {
 			return len(s) >= 3 && len(s) <= 20
 		}),
-	}).Map(func(p *models.Player) *models.Player {
+	}).Map(func(p models.Player) models.Player {
 		// Ensure ID is generated
 		if p.ID == "" {
 			p.ID = "test-" + p.Username + "-" + fmt.Sprintf("%d", time.Now().UnixNano())
 		}
 		return p
+	}).Map(func(p models.Player) *models.Player {
+		return &p
 	})
 }
 
 // genGameSession generates a random GameSession for property testing
 func genGameSession() gopter.Gen {
-	return gen.Struct(reflect.TypeOf(&models.GameSession{}), map[string]gopter.Gen{
+	return gen.Struct(reflect.TypeOf(models.GameSession{}), map[string]gopter.Gen{
 		"Player1": gen.AlphaString().SuchThat(func(s string) bool {
 			return len(s) >= 3 && len(s) <= 20
 		}),
@@ -47,7 +49,7 @@ func genGameSession() gopter.Gen {
 			models.StatusCompleted,
 			models.StatusAbandoned,
 		),
-	}).Map(func(gs *models.GameSession) *models.GameSession {
+	}).Map(func(gs models.GameSession) models.GameSession {
 		// Ensure ID is generated and players are different
 		if gs.ID == "" {
 			gs.ID = "game-" + fmt.Sprintf("%d", time.Now().UnixNano())
@@ -58,19 +60,21 @@ func genGameSession() gopter.Gen {
 		// Initialize board
 		gs.Board = models.NewBoard()
 		return gs
+	}).Map(func(gs models.GameSession) *models.GameSession {
+		return &gs
 	})
 }
 
 // genPlayerStats generates a random PlayerStats for property testing
 func genPlayerStats() gopter.Gen {
-	return gen.Struct(reflect.TypeOf(&models.PlayerStats{}), map[string]gopter.Gen{
+	return gen.Struct(reflect.TypeOf(models.PlayerStats{}), map[string]gopter.Gen{
 		"Username": gen.AlphaString().SuchThat(func(s string) bool {
 			return len(s) >= 3 && len(s) <= 20
 		}),
 		"GamesPlayed": gen.IntRange(0, 1000),
 		"GamesWon": gen.IntRange(0, 500),
 		"AvgGameTime": gen.IntRange(30, 3600), // 30 seconds to 1 hour
-	}).Map(func(ps *models.PlayerStats) *models.PlayerStats {
+	}).Map(func(ps models.PlayerStats) models.PlayerStats {
 		// Ensure ID is generated and GamesWon <= GamesPlayed
 		if ps.ID == "" {
 			ps.ID = "stats-" + ps.Username + "-" + fmt.Sprintf("%d", time.Now().UnixNano())
@@ -81,23 +85,27 @@ func genPlayerStats() gopter.Gen {
 		ps.CalculateWinRate()
 		ps.LastPlayed = time.Now()
 		return ps
+	}).Map(func(ps models.PlayerStats) *models.PlayerStats {
+		return &ps
 	})
 }
 
 // genMove generates a random Move for property testing
 func genMove(gameID string) gopter.Gen {
-	return gen.Struct(reflect.TypeOf(&models.Move{}), map[string]gopter.Gen{
+	return gen.Struct(reflect.TypeOf(models.Move{}), map[string]gopter.Gen{
 		"GameID": gen.Const(gameID),
 		"Player": gen.OneConstOf(models.PlayerColorRed, models.PlayerColorYellow),
 		"Column": gen.IntRange(0, 6),
 		"Row":    gen.IntRange(0, 5),
-	}).Map(func(m *models.Move) *models.Move {
+	}).Map(func(m models.Move) models.Move {
 		// Ensure ID is generated
 		if m.ID == "" {
 			m.ID = "move-" + fmt.Sprintf("%d", time.Now().UnixNano())
 		}
 		m.Timestamp = time.Now()
 		return m
+	}).Map(func(m models.Move) *models.Move {
+		return &m
 	})
 }
 

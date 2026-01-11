@@ -49,6 +49,48 @@ run-analytics:
 	@echo "Running analytics service..."
 	@go run cmd/analytics/main.go
 
+# Credential setup targets
+.PHONY: setup-credentials
+setup-credentials:
+	@echo "Setting up cloud service credentials..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File scripts/setup-credentials.ps1
+else
+	@bash scripts/setup-credentials.sh
+endif
+
+.PHONY: create-env
+create-env:
+	@echo "Creating .env file from template..."
+	@if [ ! -f .env ]; then cp .env.example .env && echo "Created .env file. Please edit it with your credentials."; else echo ".env file already exists."; fi
+
+.PHONY: validate-env
+validate-env:
+	@echo "Validating environment configuration..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File scripts/setup-credentials.ps1 -Action validate
+else
+	@bash scripts/setup-credentials.sh validate
+endif
+
+.PHONY: test-db
+test-db:
+	@echo "Testing database connection..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File scripts/setup-credentials.ps1 -Action test-db
+else
+	@bash scripts/setup-credentials.sh test-db
+endif
+
+.PHONY: test-kafka
+test-kafka:
+	@echo "Testing Kafka connection..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File scripts/setup-credentials.ps1 -Action test-kafka
+else
+	@bash scripts/setup-credentials.sh test-kafka
+endif
+
 # Database targets
 .PHONY: migrate-up
 migrate-up: build-migrate
@@ -59,6 +101,11 @@ migrate-up: build-migrate
 migrate-down: build-migrate
 	@echo "Rolling back database migrations..."
 	@./$(BUILD_DIR)/$(MIGRATE_BINARY) -direction=down
+
+.PHONY: migrate
+migrate:
+	@echo "Running database migrations..."
+	@go run cmd/migrate/main.go
 
 # Testing targets
 .PHONY: test
@@ -177,30 +224,55 @@ build-prod:
 .PHONY: help
 help:
 	@echo "Available targets:"
+	@echo ""
+	@echo "Build targets:"
 	@echo "  build          - Build all binaries"
 	@echo "  build-server   - Build server binary"
 	@echo "  build-analytics - Build analytics service binary"
 	@echo "  build-migrate  - Build migration tool binary"
+	@echo "  build-prod     - Build for production"
+	@echo ""
+	@echo "Development targets:"
 	@echo "  dev            - Start development server with hot reload"
 	@echo "  run-server     - Run server directly"
 	@echo "  run-analytics  - Run analytics service directly"
-	@echo "  migrate-up     - Run database migrations"
+	@echo ""
+	@echo "Credential setup targets:"
+	@echo "  setup-credentials - Interactive credential setup"
+	@echo "  create-env     - Create .env file from template"
+	@echo "  validate-env   - Validate environment configuration"
+	@echo "  test-db        - Test database connection"
+	@echo "  test-kafka     - Test Kafka connection"
+	@echo ""
+	@echo "Database targets:"
+	@echo "  migrate        - Run database migrations"
+	@echo "  migrate-up     - Run database migrations (with binary)"
 	@echo "  migrate-down   - Rollback database migrations"
+	@echo ""
+	@echo "Testing targets:"
 	@echo "  test           - Run all tests"
 	@echo "  test-coverage  - Run tests with coverage report"
 	@echo "  test-property  - Run property-based tests"
 	@echo "  test-integration - Run integration tests"
+	@echo ""
+	@echo "Code quality targets:"
 	@echo "  lint           - Run linter"
 	@echo "  fmt            - Format code"
 	@echo "  vet            - Run go vet"
+	@echo ""
+	@echo "Documentation targets:"
 	@echo "  docs           - Generate API documentation"
 	@echo "  docs-serve     - Serve documentation"
+	@echo ""
+	@echo "Docker targets:"
 	@echo "  docker-build   - Build Docker images"
 	@echo "  docker-up      - Start services with Docker"
 	@echo "  docker-down    - Stop Docker services"
+	@echo "  docker-logs    - Show Docker logs"
+	@echo ""
+	@echo "Utility targets:"
 	@echo "  deps           - Download dependencies"
 	@echo "  deps-update    - Update dependencies"
 	@echo "  clean          - Clean build artifacts"
 	@echo "  setup          - Setup development environment"
-	@echo "  build-prod     - Build for production"
 	@echo "  help           - Show this help message"

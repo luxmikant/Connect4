@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"connect4-multiplayer/pkg/models"
 )
@@ -25,6 +26,12 @@ type GameSessionRepository interface {
 	GetActiveGames(ctx context.Context) ([]*models.GameSession, error)
 	GetGamesByPlayer(ctx context.Context, playerID string) ([]*models.GameSession, error)
 	GetGameHistory(ctx context.Context, limit, offset int) ([]*models.GameSession, error)
+	
+	// Optimized queries for active session lookups
+	GetActiveSessionByPlayer(ctx context.Context, username string) (*models.GameSession, error)
+	GetActiveSessionCount(ctx context.Context) (int64, error)
+	GetTimedOutSessions(ctx context.Context, timeout time.Duration) ([]*models.GameSession, error)
+	BulkUpdateStatus(ctx context.Context, sessionIDs []string, status models.GameStatus) error
 }
 
 // PlayerStatsRepository defines the interface for player statistics operations
