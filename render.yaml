@@ -1,28 +1,32 @@
 services:
-  # Main Game Server
+  # Main Game Server API + WebSocket
   - type: web
     name: connect4-server
     env: go
-    buildCommand: go build -o server ./cmd/server
+    buildCommand: go build -o server ./cmd/server && go run ./cmd/migrate -direction up
     startCommand: ./server
+    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 8080
       - key: ENVIRONMENT
         value: production
+      - key: GIN_MODE
+        value: release
       - key: DATABASE_URL
-        fromDatabase:
-          name: connect4-db
-          property: connectionString
+        sync: false
       - key: KAFKA_BOOTSTRAP_SERVERS
         sync: false
       - key: KAFKA_API_KEY
         sync: false
       - key: KAFKA_API_SECRET
         sync: false
-    healthCheckPath: /health
+      - key: KAFKA_TOPIC
+        value: game-events
+      - key: CORS_ORIGINS
+        sync: false
     
-  # Analytics Service
+  # Analytics Service - Kafka Consumer
   - type: worker
     name: connect4-analytics
     env: go
@@ -30,15 +34,17 @@ services:
     startCommand: ./analytics
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: connect4-db
-          property: connectionString
+        sync: false
       - key: KAFKA_BOOTSTRAP_SERVERS
         sync: false
       - key: KAFKA_API_KEY
         sync: false
       - key: KAFKA_API_SECRET
         sync: false
+      - key: KAFKA_TOPIC
+        value: game-events
+      - key: KAFKA_CONSUMER_GROUP
+        value: analytics-service
 
 databases:
   - name: connect4-db
