@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Game Board Background -->
+  <rect width="100" height="100" fill="#0f172a" rx="8"/>
+  
+  <!-- Board Grid -->
+  <g stroke="#1e293b" stroke-width="2" fill="none">
+    <!-- Vertical lines -->
+    <line x1="30" y1="15" x2="30" y2="85"/>
+    <line x1="50" y1="15" x2="50" y2="85"/>
+    <line x1="70" y1="15" x2="70" y2="85"/>
+    <!-- Horizontal lines -->
+    <line x1="15" y1="35" x2="85" y2="35"/>
+    <line x1="15" y1="55" x2="85" y2="55"/>
+    <line x1="15" y1="75" x2="85" y2="75"/>
+  </g>
+  
+  <!-- Game Pieces with Glow Effect -->
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Red Piece (Top Left) -->
+  <circle cx="24" cy="27" r="6" fill="#ef4444" filter="url(#glow)" opacity="0.9"/>
+  
+  <!-- Yellow Piece (Top Center) -->
+  <circle cx="50" cy="27" r="6" fill="#eab308" filter="url(#glow)" opacity="0.9"/>
+  
+  <!-- Red Piece (Center Right) -->
+  <circle cx="76" cy="50" r="6" fill="#ef4444" filter="url(#glow)" opacity="0.9"/>
+  
+  <!-- Yellow Piece (Bottom Center) -->
+  <circle cx="50" cy="73" r="6" fill="#eab308" filter="url(#glow)" opacity="0.9"/>
+  
+  <!-- Blue Accent (Corner) -->
+  <circle cx="24" cy="73" r="5" fill="#3b82f6" opacity="0.7"/>
+  
+  <!-- Accent Border -->
+  <rect width="100" height="100" fill="none" stroke="#3b82f6" stroke-width="2" rx="8" opacity="0.5"/>
+</svg>
