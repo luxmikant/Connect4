@@ -141,7 +141,7 @@ func (m *MockGameService) AssignPlayerColors(ctx context.Context, gameID string)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	colors := make(map[string]models.PlayerColor)
 	colors[session.Player1] = models.PlayerColorRed
 	colors[session.Player2] = models.PlayerColorYellow
@@ -168,7 +168,7 @@ func (m *MockGameService) CompleteGame(ctx context.Context, gameID string, winne
 func (m *MockGameService) GetActiveSessions(ctx context.Context) ([]*models.GameSession, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	var sessions []*models.GameSession
 	for _, session := range m.sessions {
 		if session.Status == models.StatusInProgress {
@@ -181,7 +181,7 @@ func (m *MockGameService) GetActiveSessions(ctx context.Context) ([]*models.Game
 func (m *MockGameService) GetSessionsByPlayer(ctx context.Context, username string) ([]*models.GameSession, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	var sessions []*models.GameSession
 	for _, session := range m.sessions {
 		if session.Player1 == username || session.Player2 == username {
@@ -196,7 +196,7 @@ func (m *MockGameService) GetActiveSessionByPlayer(ctx context.Context, username
 	if err != nil {
 		return nil, err
 	}
-	
+
 	for _, session := range sessions {
 		if session.Status == models.StatusInProgress {
 			return session, nil
@@ -220,12 +220,12 @@ func (m *MockGameService) CleanupTimedOutSessions(ctx context.Context, timeout t
 func (m *MockGameService) MarkSessionAbandoned(ctx context.Context, gameID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	session, exists := m.sessions[gameID]
 	if !exists {
 		return models.ErrGameNotFound
 	}
-	
+
 	session.Status = models.StatusAbandoned
 	return nil
 }

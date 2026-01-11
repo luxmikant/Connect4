@@ -117,7 +117,7 @@ func (b *minimaxBot) GetBestMoveWithTimeout(ctx context.Context, board *models.B
 			if board.IsValidMove(move) {
 				bestMove = move
 			}
-			
+
 			// Check time after each depth
 			if time.Now().After(deadline) {
 				return bestMove, nil
@@ -140,7 +140,7 @@ func (b *minimaxBot) getBestMoveWithDeadline(board *models.Board, player models.
 		if time.Now().After(deadline) {
 			break
 		}
-		
+
 		if !board.IsValidMove(col) {
 			continue
 		}
@@ -195,7 +195,7 @@ func (b *minimaxBot) minimaxWithDeadline(board *models.Board, depth int, alpha, 
 			if time.Now().After(deadline) {
 				break
 			}
-			
+
 			if !board.IsValidMove(col) {
 				continue
 			}
@@ -221,7 +221,7 @@ func (b *minimaxBot) minimaxWithDeadline(board *models.Board, depth int, alpha, 
 			if time.Now().After(deadline) {
 				break
 			}
-			
+
 			if !board.IsValidMove(col) {
 				continue
 			}
