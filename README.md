@@ -200,7 +200,29 @@ Once the server is running, visit:
 
 ## Deployment
 
-### Railway
+🚀 **Deploy your game for FREE!** See our comprehensive deployment guides:
+
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Complete step-by-step deployment guide
+  - Deploy backend to **Render.com** (Free tier with WebSocket support)
+  - Deploy frontend to **Vercel** (Free tier with auto-deploy)
+  - **No shell access needed** - Migrations run automatically!
+  - Environment variable templates included
+  - Troubleshooting guide for common issues
+
+- **[DEPLOYMENT_QUICK_REF.md](DEPLOYMENT_QUICK_REF.md)** - Quick reference card
+  - Environment variables cheat sheet
+  - One-page deployment steps
+  - Common issues and solutions
+
+### Recommended Free Stack
+- **Backend**: Render.com (Go server + PostgreSQL)
+- **Frontend**: Vercel (React/Vite)  
+- **Database**: Supabase or Render PostgreSQL
+- **Kafka**: Confluent Cloud (already configured)
+
+### Alternative Options
+
+#### Railway
 ```bash
 # Install Railway CLI
 npm install -g @railway/cli
@@ -211,13 +233,7 @@ railway init
 railway up
 ```
 
-### Render
-1. Connect your GitHub repository
-2. Create a new Web Service
-3. Set build command: `make build-prod`
-4. Set start command: `./bin/server`
-
-### Fly.io
+#### Fly.io
 ```bash
 # Install flyctl
 curl -L https://fly.io/install.sh | sh

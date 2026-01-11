@@ -44,9 +44,19 @@ func main() {
 	}
 
 	// Initialize database
-	_, repoManager, err := database.Initialize(cfg.Database)
+	db, repoManager, err := database.Initialize(cfg.Database)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
+	}
+
+	// Auto-run migrations on startup (for deployment platforms without shell access)
+	log.Println("Running database migrations...")
+	migrator := database.NewMigrator(db)
+	if err := migrator.Up(); err != nil {
+		log.Printf("Warning: Migration failed: %v", err)
+		log.Println("Continuing with server startup...")
+	} else {
+		log.Println("Migrations completed successfully")
 	}
 
 	// Initialize Kafka analytics producer (Requirement 9)
@@ -56,7 +66,7 @@ func main() {
 	// Initialize services with analytics producer
 	serviceConfig := game.DefaultServiceConfig()
 	serviceConfig.AnalyticsProducer = analyticsProducer
-	
+
 	gameService := game.NewGameService(
 		repoManager.GameSession,
 		repoManager.PlayerStats,
@@ -73,7 +83,7 @@ func main() {
 
 	// Initialize WebSocket service
 	wsService := websocket.NewService(gameService, matchmakingService)
-	
+
 	// Start WebSocket service
 	ctx := context.Background()
 	if err := wsService.Start(ctx); err != nil {
