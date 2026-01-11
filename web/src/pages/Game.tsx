@@ -207,7 +207,7 @@ export const Game: React.FC = () => {
                 )}
               </button>
               
-              {navigator.share && (
+              {typeof navigator.share === 'function' && (
                 <button
                   onClick={handleShareRoom}
                   className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-300 px-4 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
