@@ -11,6 +11,7 @@ export const useGame = () => {
   const { username } = usePlayer();
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [myColor, setMyColor] = useState<'red' | 'yellow' | null>(null);
+  const [isMovePending, setIsMovePending] = useState(false);
 
   const handleQueueJoined = useCallback((message: WebSocketMessage) => {
     console.log("Queue joined:", message.payload);
@@ -42,6 +43,9 @@ export const useGame = () => {
     console.log("🎮 Game started message received:", message.payload);
     console.log("🎮 Full payload:", JSON.stringify(message.payload, null, 2));
     const payload = message.payload;
+    
+    // Reset move pending state when game starts
+    setIsMovePending(false);
     
     // Extract game state from the game_started message
     const state: GameState = {
@@ -86,6 +90,9 @@ export const useGame = () => {
   const handleMoveMade = useCallback((message: WebSocketMessage) => {
     console.log("Move made:", message.payload);
     const payload = message.payload;
+    
+    // Move was confirmed by server, allow new moves
+    setIsMovePending(false);
     
     setGameState(prev => {
       if (!prev) return prev;
@@ -135,6 +142,8 @@ export const useGame = () => {
 
   const handleError = useCallback((message: WebSocketMessage) => {
     console.error("Game error:", message.payload);
+    // Reset move pending on error so player can try again
+    setIsMovePending(false);
     toast.error(message.payload.error || message.payload.message || "An error occurred.");
   }, []);
 
@@ -179,11 +188,18 @@ export const useGame = () => {
   }, [gameState, username]);
 
   const makeMove = useCallback((column: number) => {
-    if (isMyTurn && gameState) {
+    // Prevent rapid clicks - only allow move if it's our turn and no move is pending
+    if (isMyTurn && gameState && !isMovePending) {
       console.log("Making move:", column);
+      // Set move as pending immediately to prevent double-clicks
+      setIsMovePending(true);
+      // Optimistically set isMyTurn to false while waiting for server
+      setIsMyTurn(false);
       wsService.send(MessageType.MakeMove, { gameId: gameState.id, column });
+    } else if (isMovePending) {
+      console.log("Move already pending, ignoring click");
     }
-  }, [isMyTurn, gameState]);
+  }, [isMyTurn, gameState, isMovePending]);
 
   const leaveQueue = useCallback(() => {
     wsService.send(MessageType.LeaveQueue);
@@ -195,6 +211,7 @@ export const useGame = () => {
     queueStatus,
     isMyTurn, 
     myColor,
+    isMovePending,
     makeMove,
     leaveQueue,
   };

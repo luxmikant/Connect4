@@ -67,8 +67,8 @@ func main() {
 		analyticsProducer = analytics.NewProducer(cfg.Kafka)
 		log.Printf("Analytics producer initialized for Kafka topic: %s", cfg.Kafka.Topic)
 	} else {
-		log.Println("Kafka credentials not configured, analytics disabled")
-		analyticsProducer = &analytics.Producer{} // Empty producer - won't send events
+		log.Println("Kafka credentials not configured, using noop analytics producer")
+		analyticsProducer = analytics.NewNoopProducer()
 	}
 
 	// Initialize services with analytics producer

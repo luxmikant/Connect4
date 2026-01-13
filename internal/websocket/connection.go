@@ -229,9 +229,16 @@ func (c *Connection) Start(ctx context.Context, config ConnectionConfig) {
 	go c.readPump(config)
 }
 
-// Close closes the connection
+// Close closes the connection safely (idempotent - can be called multiple times)
 func (c *Connection) Close() {
-	close(c.send)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Only close if not already closed
+	if !c.closed {
+		c.closed = true
+		close(c.send)
+	}
 }
 
 // Upgrader configures the WebSocket upgrader

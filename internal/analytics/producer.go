@@ -159,6 +159,17 @@ func NewProducer(cfg config.KafkaConfig) *Producer {
 	return NewProducerWithConfig(cfg, DefaultProducerConfig())
 }
 
+// NewNoopProducer creates a no-operation producer that doesn't send events to Kafka
+// Use this when Kafka is disabled or credentials are not configured
+func NewNoopProducer() *Producer {
+	return &Producer{
+		writer: nil, // nil writer triggers no-op behavior in all methods
+		config: DefaultProducerConfig(),
+		topic:  "",
+		logger: slog.Default().With("component", "noop-producer"),
+	}
+}
+
 // NewProducerWithConfig creates a new Kafka producer with custom configuration
 func NewProducerWithConfig(cfg config.KafkaConfig, producerCfg *ProducerConfig) *Producer {
 	logger := slog.Default().With("component", "kafka-producer")
@@ -562,17 +573,24 @@ func (p *Producer) SendPlayerReconnected(ctx context.Context, gameID, playerID s
 
 // Close closes the producer gracefully
 func (p *Producer) Close() error {
+	// If producer is not initialized (no Kafka credentials), skip
+	if p.writer == nil {
+		return nil
+	}
+
 	// Stop health check goroutine
 	if p.healthCancel != nil {
 		p.healthCancel()
 		p.healthWg.Wait()
 	}
 
-	p.logger.Info("Closing Kafka producer",
-		"eventsSent", p.eventsSent.Load(),
-		"eventsFailed", p.eventsFailed.Load(),
-		"retriesTotal", p.retriesTotal.Load(),
-	)
+	if p.logger != nil {
+		p.logger.Info("Closing Kafka producer",
+			"eventsSent", p.eventsSent.Load(),
+			"eventsFailed", p.eventsFailed.Load(),
+			"retriesTotal", p.retriesTotal.Load(),
+		)
+	}
 
 	return p.writer.Close()
 }

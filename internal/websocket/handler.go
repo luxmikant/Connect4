@@ -154,6 +154,10 @@ func (h *GameMessageHandler) handlePlayWithBot(ctx context.Context, conn *Connec
 
 	log.Printf("Bot game created: %s vs %s (Game ID: %s)", username, gameSession.Player2, gameSession.ID)
 
+	// Set the game ID on the connection and add to game room BEFORE notifications
+	conn.SetGameID(gameSession.ID)
+	h.hub.addToGameRoom(conn)
+
 	// Call the bot game created handler
 	if err := h.onBotGameCreated(ctx, username, gameSession); err != nil {
 		log.Printf("Failed to handle bot game creation: %v", err)

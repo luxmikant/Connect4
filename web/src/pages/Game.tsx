@@ -13,7 +13,7 @@ import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 
 export const Game: React.FC = () => {
-  const { gameState, queueStatus, isMyTurn, myColor, makeMove, leaveQueue } = useGame();
+  const { gameState, queueStatus, isMyTurn, myColor, isMovePending, makeMove, leaveQueue } = useGame();
   const { username } = usePlayer();
   const { playSound } = useGameSound();
   const navigate = useNavigate();
@@ -366,7 +366,7 @@ export const Game: React.FC = () => {
               <GameBoard 
                 gameState={gameState} 
                 onColumnClick={makeMove} 
-                isMyTurn={isMyTurn} 
+                isMyTurn={isMyTurn && !isMovePending} 
               />
            </div>
 
