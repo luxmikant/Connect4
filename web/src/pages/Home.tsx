@@ -1,159 +1,292 @@
-import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Play, Trophy, Cpu, LogIn, UserPlus, User, ChevronDown } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { 
+  Play, 
+  Cpu, 
+  Zap, 
+  Users, 
+  Code2, 
+  ArrowRight,
+  Sparkles,
+  Shield,
+  Globe
+} from 'lucide-react';
+import { Navbar, Hero3D, FeatureCard, Footer, ScrollReveal } from '../components/landing';
 
-export const Home: React.FC = () => {
+export const Home = () => {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
-    <div className="min-h-screen bg-game-bg flex flex-col relative overflow-hidden">
-      {/* Navigation Bar */}
-      <nav className="relative z-20 w-full px-6 py-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="text-2xl font-black text-white">CONNECT 4</div>
-          <div className="flex gap-3">
-            {user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950">
+      {/* Navbar */}
+      <Navbar />
+
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
+        {/* Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[10%] left-[5%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[150px]" />
+          <div className="absolute bottom-[10%] right-[5%] w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[150px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/5 rounded-full blur-[100px]" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+            {/* Left Side - Text */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="text-center lg:text-left"
+            >
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-8"
+              >
+                <Sparkles className="w-4 h-4" />
+                AI-Powered Strategy Game
+              </motion.div>
+
+              {/* Headline */}
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-6">
+                The Classic Strategy.
+                <br />
+                <span className="bg-gradient-to-r from-blue-400 via-blue-500 to-purple-500 bg-clip-text text-transparent">
+                  Reimagined.
+                </span>
+              </h1>
+
+              {/* Subtext */}
+              <p className="text-lg sm:text-xl text-slate-400 max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
+                Experience Connect 4 with smart AI opponents, real-time multiplayer, 
+                and beautiful modern design. No login required.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/lobby')}
+                  className="group w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-lg shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center justify-center gap-3"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-game-accent to-purple-600 flex items-center justify-center text-white text-sm font-bold">
-                    {profile?.username?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                  <span>{profile?.username || user.email}</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-                
-                {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
-                    <button
-                      onClick={() => {
-                        navigate('/profile');
-                        setShowUserMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-white hover:bg-slate-700 transition-colors flex items-center gap-2"
-                    >
-                      <User className="w-4 h-4" />
-                      My Profile
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate('/leaderboard');
-                        setShowUserMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-white hover:bg-slate-700 transition-colors flex items-center gap-2"
-                    >
-                      <Trophy className="w-4 h-4" />
-                      Leaderboard
-                    </button>
-                    <hr className="border-slate-700" />
-                    <button
-                      onClick={() => {
-                        signOut();
-                        setShowUserMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-red-400 hover:bg-slate-700 transition-colors"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                )}
+                  <Play className="w-5 h-5 fill-current" />
+                  Start Playing
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </motion.button>
+
+                <motion.a
+                  href="https://github.com/luxmikant/Connect4"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-lg transition-all flex items-center justify-center gap-3"
+                >
+                  <Code2 className="w-5 h-5" />
+                  View Code
+                </motion.a>
               </div>
-            ) : (
-              <>
-                <button
-                  onClick={() => navigate('/login')}
-                  className="px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors flex items-center gap-2"
-                >
-                  <LogIn className="w-4 h-4" />
-                  Login
-                </button>
-                <button
-                  onClick={() => navigate('/register')}
-                  className="px-4 py-2 rounded-lg bg-game-accent text-white hover:bg-blue-600 transition-colors flex items-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Register
-                </button>
-              </>
-            )}
+
+              {/* Stats */}
+              <div className="flex items-center gap-8 mt-12 justify-center lg:justify-start">
+                <Stat value="10K+" label="Games Played" />
+                <Stat value="5ms" label="Move Response" />
+                <Stat value="100%" label="Open Source" />
+              </div>
+            </motion.div>
+
+            {/* Right Side - 3D Model */}
+            <div className="relative">
+              <Hero3D />
+            </div>
           </div>
         </div>
-      </nav>
 
-      {/* Dynamic Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-purple-600/20 rounded-full blur-[120px] animate-pulse-glow" />
-        <div className="absolute top-[40%] -right-[10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px] animate-pulse-glow delay-1000" />
-      </div>
-
-      <div className="container mx-auto px-4 relative z-10 flex flex-col items-center justify-center flex-1">
-        
-        {/* Animated Headline */}
-        <motion.div 
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, type: "spring" }}
-          className="text-center mb-16"
-        >
-          <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-4 bg-clip-text text-transparent bg-gradient-to-r from-game-accent to-purple-500 drop-shadow-2xl">
-            CONNECT 4
-          </h1>
-          <p className="text-xl md:text-2xl text-slate-400 font-medium tracking-wide">
-            MULTIPLAYER BATTLES
-          </p>
-        </motion.div>
-
-        {/* Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
-           
-           <motion.button
-             whileHover={{ scale: 1.05 }}
-             whileTap={{ scale: 0.95 }}
-             onClick={() => navigate('/lobby')}
-             className="group relative h-48 rounded-3xl bg-slate-800/50 backdrop-blur-md border border-slate-700 hover:border-game-accent hover:bg-slate-800 transition-all overflow-hidden flex flex-col items-center justify-center p-6 text-left"
-           >
-              <div className="absolute inset-0 bg-gradient-to-br from-game-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="bg-game-accent p-4 rounded-full mb-4 shadow-[0_0_20px_rgba(59,130,246,0.5)]">
-                 <Play className="w-8 h-8 text-white fill-current" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Play Now</h2>
-              <p className="text-slate-400 text-center">Challenge players online or train against AI</p>
-           </motion.button>
-
-           <motion.button
-             whileHover={{ scale: 1.05 }}
-             whileTap={{ scale: 0.95 }}
-             onClick={() => navigate('/leaderboard')}
-             className="group relative h-48 rounded-3xl bg-slate-800/50 backdrop-blur-md border border-slate-700 hover:border-yellow-500 hover:bg-slate-800 transition-all overflow-hidden flex flex-col items-center justify-center p-6 text-left"
-           >
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="bg-yellow-500 p-4 rounded-full mb-4 shadow-[0_0_20px_rgba(234,179,8,0.5)]">
-                 <Trophy className="w-8 h-8 text-black fill-current" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Leaderboard</h2>
-              <p className="text-slate-400 text-center">See top players and global rankings</p>
-           </motion.button>
-
-        </div>
-
-        {/* Footer Info */}
-        <motion.div 
+        {/* Scroll Indicator */}
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-16 flex items-center gap-2 text-slate-500 text-sm font-mono"
+          transition={{ delay: 1.5 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
         >
-          <Cpu className="w-4 h-4" />
-          <span>POWERED BY GO + REACT + KAFKA</span>
+          <motion.div
+            animate={{ y: [0, 10, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2"
+          >
+            <div className="w-1.5 h-3 bg-white/40 rounded-full" />
+          </motion.div>
         </motion.div>
+      </section>
 
-      </div>
+      {/* Features Section */}
+      <section className="relative py-24 md:py-32 bg-gradient-to-b from-slate-950 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <ScrollReveal className="text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6 tracking-tight">
+              Why Choose Connect4.ai?
+            </h2>
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+              Built with cutting-edge technology for the smoothest gaming experience
+            </p>
+          </ScrollReveal>
+
+          {/* Feature Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            <ScrollReveal delay={0.1}>
+              <FeatureCard
+                icon={<Cpu className="w-6 h-6" />}
+                title="Smart AI"
+                description="Powered by Minimax Algorithm with alpha-beta pruning. Three difficulty levels to challenge any skill."
+                gradient="from-blue-500 to-blue-600"
+              />
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.2}>
+              <FeatureCard
+                icon={<Zap className="w-6 h-6" />}
+                title="Instant Play"
+                description="No signup required. Jump straight into a game within seconds. Your progress saves automatically."
+                gradient="from-amber-500 to-orange-600"
+              />
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.3}>
+              <FeatureCard
+                icon={<Users className="w-6 h-6" />}
+                title="Real-time Multiplayer"
+                description="Play against friends or random opponents with WebSocket-powered instant synchronization."
+                gradient="from-emerald-500 to-teal-600"
+              />
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.4}>
+              <FeatureCard
+                icon={<Globe className="w-6 h-6" />}
+                title="Custom Rooms"
+                description="Create private game rooms with shareable codes. Perfect for playing with friends anywhere."
+                gradient="from-purple-500 to-violet-600"
+              />
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.5}>
+              <FeatureCard
+                icon={<Shield className="w-6 h-6" />}
+                title="Secure & Fair"
+                description="Server-side game validation ensures fair play. No cheating possible with our architecture."
+                gradient="from-rose-500 to-pink-600"
+              />
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.6}>
+              <FeatureCard
+                icon={<Code2 className="w-6 h-6" />}
+                title="Open Source"
+                description="Fully open source on GitHub. Built with Go, React, and modern web technologies."
+                gradient="from-slate-600 to-slate-700"
+              />
+            </ScrollReveal>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="py-24 md:py-32 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal className="text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6 tracking-tight">
+              How It Works
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Get started in three simple steps
+            </p>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
+            <ScrollReveal delay={0.1}>
+              <Step
+                number="01"
+                title="Choose Your Mode"
+                description="Play against AI for practice or jump into multiplayer for competitive matches"
+              />
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.2}>
+              <Step
+                number="02"
+                title="Join a Game"
+                description="Get matched instantly or create a private room to play with friends"
+              />
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.3}>
+              <Step
+                number="03"
+                title="Drop & Win"
+                description="Connect four discs in a row to claim victory and climb the leaderboard"
+              />
+            </ScrollReveal>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 md:py-32 bg-gradient-to-b from-white to-slate-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <ScrollReveal>
+            <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6 tracking-tight">
+              Ready to Play?
+            </h2>
+            <p className="text-lg text-slate-600 mb-10 max-w-xl mx-auto">
+              Join thousands of players and experience the classic game with a modern twist.
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/lobby')}
+              className="group px-10 py-5 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all inline-flex items-center gap-3"
+            >
+              <Play className="w-6 h-6 fill-current" />
+              Start Playing Now
+              <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+            </motion.button>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
+
+// Helper Components
+const Stat = ({ value, label }: { value: string; label: string }) => (
+  <div className="text-center lg:text-left">
+    <div className="text-2xl font-bold text-white">{value}</div>
+    <div className="text-sm text-slate-500">{label}</div>
+  </div>
+);
+
+const Step = ({ 
+  number, 
+  title, 
+  description 
+}: { 
+  number: string; 
+  title: string; 
+  description: string;
+}) => (
+  <div className="text-center">
+    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-xl mb-6 shadow-lg shadow-blue-500/25">
+      {number}
+    </div>
+    <h3 className="text-xl font-bold text-slate-900 mb-3">{title}</h3>
+    <p className="text-slate-600 leading-relaxed">{description}</p>
+  </div>
+);
