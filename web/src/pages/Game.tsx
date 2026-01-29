@@ -28,6 +28,18 @@ export const Game: React.FC = () => {
   const customRoomAction = localStorage.getItem('connect4_customRoomAction');
   const roomCodeParam = searchParams.get('room');
 
+  useEffect(() => {
+    if (roomCodeParam && !roomCode) {
+      setRoomCode(roomCodeParam.toUpperCase());
+    }
+  }, [roomCodeParam, roomCode]);
+
+  useEffect(() => {
+    if (roomCode) {
+      localStorage.setItem('connect4_lastRoomCode', roomCode);
+    }
+  }, [roomCode]);
+
   // Subscribe to custom room messages
   useEffect(() => {
     const handleRoomCreated = (_message: any) => {
@@ -119,6 +131,16 @@ export const Game: React.FC = () => {
 
   const handlePlayAgain = () => {
     playSound('click');
+    if (gameMode === 'custom' && gameState?.id && username) {
+      wsService.send(MessageType.RematchCustomRoom, {
+        gameId: gameState.id,
+        username,
+      });
+      setIsWaitingForOpponent(true);
+      toast('Starting rematch...');
+      return;
+    }
+
     hasJoinedRef.current = false;
     // For bot, we can just re-send join, but nav to lobby is safer
     navigate('/lobby');

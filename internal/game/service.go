@@ -35,6 +35,7 @@ type GameService interface {
 	CreateCustomRoom(ctx context.Context, creator string) (*models.GameSession, string, error)
 	JoinCustomRoom(ctx context.Context, roomCode, username string) (*models.GameSession, error)
 	GetSessionByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error)
+	RematchCustomRoom(ctx context.Context, gameID, username string) (*models.GameSession, error)
 
 	// Turn management
 	GetCurrentTurn(ctx context.Context, gameID string) (string, models.PlayerColor, error)
@@ -365,6 +366,94 @@ func (s *gameService) JoinCustomRoom(ctx context.Context, roomCode, username str
 	}
 
 	return session, nil
+}
+
+// RematchCustomRoom creates a new game session for an existing custom room code
+// while preserving the completed game record by releasing the room code from the old session.
+func (s *gameService) RematchCustomRoom(ctx context.Context, gameID, username string) (*models.GameSession, error) {
+	if gameID == "" {
+		return nil, fmt.Errorf("game ID cannot be empty")
+	}
+	if username == "" {
+		return nil, fmt.Errorf("username cannot be empty")
+	}
+
+	session, err := s.GetSession(ctx, gameID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !session.IsCustom || session.RoomCode == nil {
+		return nil, fmt.Errorf("rematch is only available for custom rooms")
+	}
+
+	if session.Player1 != username && session.Player2 != username {
+		return nil, fmt.Errorf("user not part of this game")
+	}
+
+	if !session.IsCompleted() {
+		return nil, fmt.Errorf("rematch is only available after the game ends")
+	}
+
+	if session.Player2 == "" || session.Player2 == "waiting" {
+		return nil, fmt.Errorf("cannot rematch without a second player")
+	}
+
+	roomCode := *session.RoomCode
+
+	// Release room code from completed session to preserve history
+	session.RoomCode = nil
+	if err := s.gameRepo.Update(ctx, session); err != nil {
+		return nil, fmt.Errorf("failed to release room code: %w", err)
+	}
+
+	// Create a new session with the same room code and players
+	newSession := &models.GameSession{
+		Player1:     session.Player1,
+		Player2:     session.Player2,
+		Status:      models.StatusInProgress,
+		CurrentTurn: models.PlayerColorRed,
+		Board:       models.NewBoard(),
+		StartTime:   time.Now(),
+		RoomCode:    &roomCode,
+		IsCustom:    true,
+		CreatedBy:   session.CreatedBy,
+	}
+
+	if err := s.gameRepo.Create(ctx, newSession); err != nil {
+		return nil, fmt.Errorf("failed to create rematch session: %w", err)
+	}
+
+	s.CacheSession(newSession)
+
+	// Create game started event
+	event := models.NewGameStartedEvent(newSession.ID, newSession.Player1, newSession.Player2)
+	if err := s.eventRepo.Create(ctx, event); err != nil {
+		s.logger.Warn("failed to create game started event",
+			"gameID", newSession.ID,
+			"error", err,
+		)
+	}
+
+	// Send analytics event to Kafka
+	if s.analyticsProducer != nil {
+		go func() {
+			if err := s.analyticsProducer.SendGameStarted(context.Background(), newSession.ID, newSession.Player1, newSession.Player2); err != nil {
+				s.logger.Warn("failed to send game started analytics event",
+					"gameID", newSession.ID,
+					"error", err,
+				)
+			}
+		}()
+	}
+
+	s.logger.Info("custom room rematch created",
+		"oldGameID", gameID,
+		"newGameID", newSession.ID,
+		"roomCode", roomCode,
+	)
+
+	return newSession, nil
 }
 
 // GetSessionByRoomCode retrieves a game session by room code

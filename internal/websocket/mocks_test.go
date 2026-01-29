@@ -270,6 +270,75 @@ func (m *MockGameService) GetCacheStats() map[string]interface{} {
 	return make(map[string]interface{})
 }
 
+// Custom room methods
+func (m *MockGameService) CreateCustomRoom(ctx context.Context, creator string) (*models.GameSession, string, error) {
+	session := &models.GameSession{
+		ID:          generateTestID(),
+		Player1:     creator,
+		Board:       models.NewBoard(),
+		CurrentTurn: models.PlayerColorRed,
+		Status:      models.StatusWaiting,
+		StartTime:   time.Now(),
+		RoomCode:    stringPtr("TEST1234"),
+	}
+	m.mu.Lock()
+	m.sessions[session.ID] = session
+	m.mu.Unlock()
+	return session, "TEST1234", nil
+}
+
+func (m *MockGameService) JoinCustomRoom(ctx context.Context, roomCode, username string) (*models.GameSession, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, session := range m.sessions {
+		if session.RoomCode != nil && *session.RoomCode == roomCode && session.Status == models.StatusWaiting {
+			session.Player2 = username
+			session.Status = models.StatusInProgress
+			return session, nil
+		}
+	}
+	return nil, models.ErrGameNotFound
+}
+
+func (m *MockGameService) GetSessionByRoomCode(ctx context.Context, roomCode string) (*models.GameSession, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, session := range m.sessions {
+		if session.RoomCode != nil && *session.RoomCode == roomCode {
+			return session, nil
+		}
+	}
+	return nil, models.ErrGameNotFound
+}
+
+func (m *MockGameService) RematchCustomRoom(ctx context.Context, gameID, username string) (*models.GameSession, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	oldSession, exists := m.sessions[gameID]
+	if !exists {
+		return nil, models.ErrGameNotFound
+	}
+	// Create new session with same players
+	newSession := &models.GameSession{
+		ID:          generateTestID(),
+		Player1:     oldSession.Player1,
+		Player2:     oldSession.Player2,
+		Board:       models.NewBoard(),
+		CurrentTurn: models.PlayerColorRed,
+		Status:      models.StatusInProgress,
+		StartTime:   time.Now(),
+		RoomCode:    oldSession.RoomCode,
+	}
+	// Clear room code from old session
+	oldSession.RoomCode = nil
+	m.sessions[newSession.ID] = newSession
+	return newSession, nil
+}
+
+func stringPtr(s string) *string {
+	return &s
+}
+
 func generateTestID() string {
 	return "test-" + time.Now().Format("20060102150405")
 }

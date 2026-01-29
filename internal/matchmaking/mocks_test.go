@@ -157,3 +157,11 @@ func (m *MockGameService) GetSessionByRoomCode(ctx context.Context, roomCode str
 	}
 	return args.Get(0).(*models.GameSession), args.Error(1)
 }
+
+func (m *MockGameService) RematchCustomRoom(ctx context.Context, gameID, username string) (*models.GameSession, error) {
+	args := m.Called(ctx, gameID, username)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GameSession), args.Error(1)
+}

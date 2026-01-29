@@ -53,6 +53,8 @@ func (h *GameMessageHandler) HandleMessage(ctx context.Context, conn *Connection
 		return h.handleCreateCustomRoom(ctx, conn, message)
 	case MessageTypeJoinCustomRoom:
 		return h.handleJoinCustomRoom(ctx, conn, message)
+	case MessageTypeRematchCustomRoom:
+		return h.handleRematchCustomRoom(ctx, conn, message)
 	case MessageTypeJoinGame:
 		return h.handleJoinGame(ctx, conn, message)
 	case MessageTypeMakeMove:
@@ -262,6 +264,48 @@ func (h *GameMessageHandler) handleJoinCustomRoom(ctx context.Context, conn *Con
 
 	// Notify both players that the game has started
 	h.notifyGameStarted(gameSession)
+
+	return nil
+}
+
+// handleRematchCustomRoom processes rematch requests for custom rooms
+func (h *GameMessageHandler) handleRematchCustomRoom(ctx context.Context, conn *Connection, message *Message) error {
+	username, _ := message.Payload["username"].(string)
+	gameID, _ := message.Payload["gameId"].(string)
+
+	if username == "" {
+		username = conn.GetUserID()
+	}
+	if gameID == "" {
+		gameID = conn.GetGameID()
+	}
+
+	if username == "" || gameID == "" {
+		return fmt.Errorf("invalid rematch request")
+	}
+
+	log.Printf("Player %s requesting rematch for game %s", username, gameID)
+
+	newSession, err := h.gameService.RematchCustomRoom(ctx, gameID, username)
+	if err != nil {
+		log.Printf("Failed to rematch custom room: %v", err)
+		errMsg := CreateErrorMessage("rematch_failed", "Failed to start rematch", err.Error())
+		data, _ := errMsg.ToJSON()
+		conn.SendMessage(data)
+		return fmt.Errorf("failed to rematch custom room: %w", err)
+	}
+
+	// Move players to new game room
+	for _, player := range []string{newSession.Player1, newSession.Player2} {
+		if playerConn, exists := h.hub.GetConnection(player); exists {
+			h.hub.removeFromGameRoom(playerConn)
+			playerConn.SetGameID(newSession.ID)
+			h.hub.addToGameRoom(playerConn)
+		}
+	}
+
+	// Notify both players that the rematch has started
+	h.notifyGameStarted(newSession)
 
 	return nil
 }

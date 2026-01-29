@@ -6,6 +6,7 @@ export const MessageType = {
   MakeMove: "make_move",
   Reconnect: "reconnect",
   LeaveGame: "leave_game",
+  RematchCustomRoom: "rematch_custom_room",
   Ping: "ping",
   PlayWithBot: "play_with_bot",
   CreateCustomRoom: "create_custom_room",

@@ -10,16 +10,17 @@ type MessageType string
 
 const (
 	// Client to Server messages
-	MessageTypeJoinQueue        MessageType = "join_queue"         // New: Join matchmaking queue
-	MessageTypeLeaveQueue       MessageType = "leave_queue"        // New: Leave matchmaking queue
-	MessageTypePlayWithBot      MessageType = "play_with_bot"      // New: Play directly with bot
-	MessageTypeCreateCustomRoom MessageType = "create_custom_room" // New: Create custom room for friend invite
-	MessageTypeJoinCustomRoom   MessageType = "join_custom_room"   // New: Join custom room by code
-	MessageTypeJoinGame         MessageType = "join_game"
-	MessageTypeMakeMove         MessageType = "make_move"
-	MessageTypeReconnect        MessageType = "reconnect"
-	MessageTypeLeaveGame        MessageType = "leave_game"
-	MessageTypePing             MessageType = "ping"
+	MessageTypeJoinQueue         MessageType = "join_queue"          // New: Join matchmaking queue
+	MessageTypeLeaveQueue        MessageType = "leave_queue"         // New: Leave matchmaking queue
+	MessageTypePlayWithBot       MessageType = "play_with_bot"       // New: Play directly with bot
+	MessageTypeCreateCustomRoom  MessageType = "create_custom_room"  // New: Create custom room for friend invite
+	MessageTypeJoinCustomRoom    MessageType = "join_custom_room"    // New: Join custom room by code
+	MessageTypeRematchCustomRoom MessageType = "rematch_custom_room" // New: Rematch in same custom room
+	MessageTypeJoinGame          MessageType = "join_game"
+	MessageTypeMakeMove          MessageType = "make_move"
+	MessageTypeReconnect         MessageType = "reconnect"
+	MessageTypeLeaveGame         MessageType = "leave_game"
+	MessageTypePing              MessageType = "ping"
 
 	// Server to Client messages
 	MessageTypeQueueJoined        MessageType = "queue_joined"         // New: Joined matchmaking queue
@@ -100,6 +101,12 @@ type CreateCustomRoomPayload struct {
 type JoinCustomRoomPayload struct {
 	Username string `json:"username"`
 	RoomCode string `json:"roomCode"`
+}
+
+// RematchCustomRoomPayload represents a rematch request for a custom room
+type RematchCustomRoomPayload struct {
+	Username string `json:"username"`
+	GameID   string `json:"gameId"`
 }
 
 // RoomCreatedPayload represents when a custom room is created
