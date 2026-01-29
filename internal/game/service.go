@@ -308,14 +308,21 @@ func (s *gameService) JoinCustomRoom(ctx context.Context, roomCode, username str
 		return nil, fmt.Errorf("room with code %s does not exist", roomCode)
 	}
 
+	// Check if user is the creator trying to reconnect
+	if session.Player1 == username {
+		// Creator is reconnecting to their room - just return the session
+		s.logger.Info("creator reconnecting to custom room",
+			"gameID", session.ID,
+			"roomCode", roomCode,
+			"creator", username,
+			"status", session.Status,
+		)
+		return session, nil
+	}
+
 	// Validate room is still waiting for players
 	if session.Status != models.StatusWaiting {
 		return nil, fmt.Errorf("room is no longer available (status: %s)", session.Status)
-	}
-
-	// Check if user is trying to join their own room
-	if session.Player1 == username {
-		return nil, fmt.Errorf("cannot join your own room")
 	}
 
 	// Check if room already has a second player

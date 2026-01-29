@@ -259,8 +259,18 @@ func (h *GameMessageHandler) handleJoinCustomRoom(ctx context.Context, conn *Con
 	// Update connection's current game
 	conn.SetGameID(gameSession.ID)
 
-	// Add joiner to game room
+	// Add player to game room
 	h.hub.addToGameRoom(conn)
+
+	// Check if this is the creator reconnecting (status is still waiting)
+	if gameSession.Player1 == username && gameSession.Status == models.StatusWaiting {
+		log.Printf("Creator %s reconnected to room %s, sending waiting message", username, roomCode)
+		// Creator is reconnecting, send them the waiting message
+		waitingMsg := CreateWaitingForOpponentMessage(gameSession.ID, roomCode)
+		data, _ := waitingMsg.ToJSON()
+		conn.SendMessage(data)
+		return nil
+	}
 
 	// Notify both players that the game has started
 	h.notifyGameStarted(gameSession)
