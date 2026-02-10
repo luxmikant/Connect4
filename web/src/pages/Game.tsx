@@ -141,6 +141,12 @@ export const Game: React.FC = () => {
       return;
     }
 
+    if (gameMode === 'bot' && username) {
+      wsService.send(MessageType.PlayWithBot, { username });
+      toast('Starting rematch...');
+      return;
+    }
+
     hasJoinedRef.current = false;
     // For bot, we can just re-send join, but nav to lobby is safer
     navigate('/lobby');
