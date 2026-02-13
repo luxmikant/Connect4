@@ -137,3 +137,64 @@ func TestWebSocketErrors(t *testing.T) {
 		assert.NotEmpty(t, ErrGameAlreadyEnded.Error())
 	})
 }
+
+func TestBotDifficultyMessages(t *testing.T) {
+	t.Run("PlayWithBot message with Easy difficulty", func(t *testing.T) {
+		msg := NewMessage(MessageTypePlayWithBot, map[string]interface{}{
+			"username":   "testplayer",
+			"difficulty": "easy",
+		})
+
+		assert.Equal(t, MessageTypePlayWithBot, msg.Type)
+		assert.Equal(t, "testplayer", msg.Payload["username"])
+		assert.Equal(t, "easy", msg.Payload["difficulty"])
+	})
+
+	t.Run("PlayWithBot message with Medium difficulty", func(t *testing.T) {
+		msg := NewMessage(MessageTypePlayWithBot, map[string]interface{}{
+			"username":   "testplayer",
+			"difficulty": "medium",
+		})
+
+		assert.Equal(t, MessageTypePlayWithBot, msg.Type)
+		assert.Equal(t, "medium", msg.Payload["difficulty"])
+	})
+
+	t.Run("PlayWithBot message with Hard difficulty", func(t *testing.T) {
+		msg := NewMessage(MessageTypePlayWithBot, map[string]interface{}{
+			"username":   "testplayer",
+			"difficulty": "hard",
+		})
+
+		assert.Equal(t, MessageTypePlayWithBot, msg.Type)
+		assert.Equal(t, "hard", msg.Payload["difficulty"])
+	})
+
+	t.Run("PlayWithBot message without difficulty (defaults to medium)", func(t *testing.T) {
+		msg := NewMessage(MessageTypePlayWithBot, map[string]interface{}{
+			"username": "testplayer",
+		})
+
+		assert.Equal(t, MessageTypePlayWithBot, msg.Type)
+		assert.Nil(t, msg.Payload["difficulty"])
+	})
+
+	t.Run("PlayWithBot message serialization with difficulty", func(t *testing.T) {
+		originalMsg := NewMessage(MessageTypePlayWithBot, map[string]interface{}{
+			"username":   "testplayer",
+			"difficulty": "hard",
+		})
+
+		// Serialize
+		jsonData, err := originalMsg.ToJSON()
+		require.NoError(t, err)
+
+		// Deserialize
+		parsedMsg, err := FromJSON(jsonData)
+		require.NoError(t, err)
+
+		assert.Equal(t, MessageTypePlayWithBot, parsedMsg.Type)
+		assert.Equal(t, "testplayer", parsedMsg.Payload["username"])
+		assert.Equal(t, "hard", parsedMsg.Payload["difficulty"])
+	})
+}

@@ -44,20 +44,22 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Initialize database
-	db, repoManager, err := database.Initialize(cfg.Database)
-	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
-	}
+	// Initialize database with resilient connection (won't crash if DB is unavailable)
+	resilientDB := database.NewResilientDB(cfg.Database)
+	defer resilientDB.Close()
 
-	// Auto-run migrations on startup (for deployment platforms without shell access)
-	log.Println("Running database migrations...")
-	migrator := database.NewMigrator(db)
-	if err := migrator.Up(); err != nil {
-		log.Printf("Warning: Migration failed: %v", err)
-		log.Println("Continuing with server startup...")
+	// Run migrations if DB is already connected
+	if resilientDB.IsConnected() {
+		log.Println("Running database migrations...")
+		migrator := database.NewMigrator(resilientDB.DB())
+		if err := migrator.Up(); err != nil {
+			log.Printf("Warning: Migration failed: %v", err)
+			log.Println("Continuing with server startup...")
+		} else {
+			log.Println("Migrations completed successfully")
+		}
 	} else {
-		log.Println("Migrations completed successfully")
+		log.Println("⚠️  Skipping migrations — database not yet available (will run after reconnection)")
 	}
 
 	// Initialize Kafka analytics producer (Requirement 9)
@@ -75,36 +77,61 @@ func main() {
 	serviceConfig := game.DefaultServiceConfig()
 	serviceConfig.AnalyticsProducer = analyticsProducer
 
-	gameService := game.NewGameService(
-		repoManager.GameSession,
-		repoManager.PlayerStats,
-		repoManager.Move,
-		repoManager.GameEvent,
-		serviceConfig,
-	)
+	// Build services — use repo manager if DB is connected, otherwise defer
+	var gameService game.GameService
+	var matchmakingService matchmaking.MatchmakingService
+	var wsService *websocket.Service
 
-	// Initialize matchmaking service
-	matchmakingService := matchmaking.NewMatchmakingService(
-		gameService,
-		matchmaking.DefaultServiceConfig(),
-	)
+	initServices := func() {
+		repoManager := resilientDB.RepoManager()
+		if repoManager == nil {
+			log.Println("⚠️  Cannot initialize game services — database not connected")
+			return
+		}
 
-	// Initialize WebSocket service
-	wsService := websocket.NewService(gameService, matchmakingService)
+		gameService = game.NewGameService(
+			repoManager.GameSession,
+			repoManager.PlayerStats,
+			repoManager.Move,
+			repoManager.GameEvent,
+			serviceConfig,
+		)
 
-	// Start WebSocket service
-	ctx := context.Background()
-	if err := wsService.Start(ctx); err != nil {
-		log.Fatalf("Failed to start WebSocket service: %v", err)
+		matchmakingService = matchmaking.NewMatchmakingService(
+			gameService,
+			matchmaking.DefaultServiceConfig(),
+		)
+
+		wsService = websocket.NewService(gameService, matchmakingService)
+
+		ctx := context.Background()
+		if err := wsService.Start(ctx); err != nil {
+			log.Printf("Warning: Failed to start WebSocket service: %v", err)
+		} else {
+			log.Println("✅ Game services initialized successfully")
+		}
 	}
 
-	// Initialize handlers
-	gameHandler := handlers.NewGameHandler(gameService)
-	leaderboardHandler := handlers.NewLeaderboardHandler(repoManager.PlayerStats)
+	initServices()
 
-	// Initialize Supabase Auth and Auth Handler
+	// If DB wasn't ready at startup, watch for reconnection and init services
+	if !resilientDB.IsConnected() {
+		go func() {
+			for {
+				time.Sleep(5 * time.Second)
+				if resilientDB.IsConnected() && gameService == nil {
+					log.Println("Database reconnected — initializing game services...")
+					initServices()
+					if gameService != nil {
+						break
+					}
+				}
+			}
+		}()
+	}
+
+	// Initialize Supabase Auth
 	supabaseAuth := auth.NewSupabaseAuth(cfg.Supabase.URL, cfg.Supabase.ServiceKey)
-	authHandler := handlers.NewAuthHandler(supabaseAuth, repoManager.Player)
 
 	// Set Gin mode based on environment
 	if cfg.Environment == "production" {
@@ -114,8 +141,42 @@ func main() {
 	// Create Gin router
 	router := gin.New()
 
-	// Setup routes and middleware
-	routes.SetupRoutes(router, cfg, gameHandler, leaderboardHandler, authHandler, wsService.GetWebSocketHandler(), supabaseAuth)
+	// Build handlers — may be nil if DB isn't ready yet
+	var gameHandler *handlers.GameHandler
+	var leaderboardHandler *handlers.LeaderboardHandler
+	var authHandler *handlers.AuthHandler
+
+	if resilientDB.IsConnected() {
+		repoManager := resilientDB.RepoManager()
+		gameHandler = handlers.NewGameHandler(gameService)
+		leaderboardHandler = handlers.NewLeaderboardHandler(repoManager.PlayerStats)
+		authHandler = handlers.NewAuthHandler(supabaseAuth, repoManager.Player)
+	}
+
+	// Setup routes — pass whatever we have (handlers may be nil initially)
+	if gameHandler != nil && leaderboardHandler != nil && authHandler != nil && wsService != nil {
+		routes.SetupRoutes(router, cfg, gameHandler, leaderboardHandler, authHandler, wsService.GetWebSocketHandler(), supabaseAuth)
+	} else {
+		// Minimal routes when DB is unavailable
+		setupMinimalRoutes(router, cfg, resilientDB)
+		log.Println("⚠️  Server started with minimal routes — game endpoints unavailable until DB connects")
+
+		// Watch for DB reconnection and set up full routes
+		go func() {
+			for {
+				time.Sleep(5 * time.Second)
+				if resilientDB.IsConnected() && gameService != nil {
+					repoManager := resilientDB.RepoManager()
+					gh := handlers.NewGameHandler(gameService)
+					lh := handlers.NewLeaderboardHandler(repoManager.PlayerStats)
+					ah := handlers.NewAuthHandler(supabaseAuth, repoManager.Player)
+					routes.SetupRoutes(router, cfg, gh, lh, ah, wsService.GetWebSocketHandler(), supabaseAuth)
+					log.Println("✅ Full routes registered after DB reconnection")
+					break
+				}
+			}
+		}()
+	}
 
 	// Create HTTP server
 	srv := &http.Server{
@@ -144,8 +205,10 @@ func main() {
 	defer cancel()
 
 	// Stop WebSocket service
-	if err := wsService.Stop(); err != nil {
-		log.Printf("Error stopping WebSocket service: %v", err)
+	if wsService != nil {
+		if err := wsService.Stop(); err != nil {
+			log.Printf("Error stopping WebSocket service: %v", err)
+		}
 	}
 
 	// Close analytics producer
@@ -158,4 +221,57 @@ func main() {
 	}
 
 	log.Println("Server exited")
+}
+
+// setupMinimalRoutes registers only health/status routes when the database is unavailable.
+// This keeps the server responsive to Render's health checks so it doesn't get killed.
+func setupMinimalRoutes(router *gin.Engine, cfg *config.Config, rdb *database.ResilientDB) {
+	// Setup middleware even in minimal mode
+	corsConfig := gin.HandlerFunc(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+	router.Use(corsConfig)
+	router.Use(gin.Recovery())
+
+	// Health check — always returns 200 so Render doesn't kill the service
+	router.GET("/health", func(c *gin.Context) {
+		dbStatus := "disconnected"
+		if rdb.IsConnected() {
+			dbStatus = "connected"
+		}
+		c.JSON(200, gin.H{
+			"status":   "degraded",
+			"service":  "connect4-multiplayer",
+			"version":  "1.0.0",
+			"database": dbStatus,
+			"message":  "Server is running but database-dependent endpoints are unavailable",
+		})
+	})
+
+	// Readiness check — returns 503 until DB is connected
+	router.GET("/health/ready", func(c *gin.Context) {
+		if err := rdb.HealthCheck(); err != nil {
+			c.JSON(503, gin.H{
+				"status": "not_ready",
+				"error":  err.Error(),
+			})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ready"})
+	})
+
+	// Catch-all for API routes when DB is down
+	router.NoRoute(func(c *gin.Context) {
+		c.JSON(503, gin.H{
+			"error":   "service_degraded",
+			"message": "Database is currently unavailable. The server is reconnecting — please try again shortly.",
+		})
+	})
 }

@@ -26,6 +26,7 @@ export const Game: React.FC = () => {
   // Get game mode from localStorage
   const gameMode = localStorage.getItem('connect4_gameMode') || 'matchmaking';
   const customRoomAction = localStorage.getItem('connect4_customRoomAction');
+  const botDifficulty = localStorage.getItem('connect4_botDifficulty') || 'medium';
   const roomCodeParam = searchParams.get('room');
 
   useEffect(() => {
@@ -87,8 +88,8 @@ export const Game: React.FC = () => {
               wsService.send(MessageType.JoinCustomRoom, { username, roomCode: roomCodeParam });
             }
           } else if (gameMode === 'bot') {
-            console.log("Requesting bot game for:", username);
-            wsService.send(MessageType.PlayWithBot, { username });
+            console.log("Requesting bot game for:", username, "difficulty:", botDifficulty);
+            wsService.send(MessageType.PlayWithBot, { username, difficulty: botDifficulty });
           } else {
             console.log("Joining matchmaking queue for:", username);
             wsService.send(MessageType.JoinQueue, { username });
@@ -143,7 +144,7 @@ export const Game: React.FC = () => {
 
     if (gameMode === 'bot' && username) {
       hasJoinedRef.current = false;
-      wsService.send(MessageType.PlayWithBot, { username });
+      wsService.send(MessageType.PlayWithBot, { username, difficulty: botDifficulty });
       toast('Starting new bot game...');
       return;
     }
@@ -364,7 +365,9 @@ export const Game: React.FC = () => {
           <div className="flex items-center gap-4 bg-slate-800/50 backdrop-blur rounded-full px-6 py-2 border border-slate-700">
             {gameMode === 'bot' ? <Cpu size={18} className="text-purple-400" /> : <Users size={18} className="text-blue-400" />}
             <span className="font-mono text-sm tracking-wider text-slate-300">
-              {gameMode === 'bot' ? 'TRAINING MODE' : 'RANKED MATCH'}
+              {gameMode === 'bot' 
+                ? `AI — ${botDifficulty.toUpperCase()}`
+                : 'RANKED MATCH'}
             </span>
           </div>
 

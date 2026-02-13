@@ -20,11 +20,11 @@ const (
 func (d Difficulty) SearchDepth() int {
 	switch d {
 	case DifficultyEasy:
-		return 2
+		return 1
 	case DifficultyMedium:
 		return 4
 	case DifficultyHard:
-		return 7
+		return 8
 	default:
 		return 4
 	}
@@ -34,13 +34,27 @@ func (d Difficulty) SearchDepth() int {
 func (d Difficulty) HumanDelay() time.Duration {
 	switch d {
 	case DifficultyEasy:
-		return 500 * time.Millisecond
+		return 600 * time.Millisecond
 	case DifficultyMedium:
-		return 300 * time.Millisecond
+		return 400 * time.Millisecond
 	case DifficultyHard:
-		return 100 * time.Millisecond
+		return 200 * time.Millisecond
 	default:
-		return 300 * time.Millisecond
+		return 400 * time.Millisecond
+	}
+}
+
+// String returns a human-readable name for the difficulty
+func (d Difficulty) String() string {
+	switch d {
+	case DifficultyEasy:
+		return "Easy"
+	case DifficultyMedium:
+		return "Medium"
+	case DifficultyHard:
+		return "Hard"
+	default:
+		return "Medium"
 	}
 }
 

@@ -171,12 +171,15 @@ func validate(config *Config) error {
 		return fmt.Errorf("invalid server port: %d", config.Server.Port)
 	}
 
+	// Database URL is no longer a hard requirement — the server can start
+	// in degraded mode and reconnect once the DB becomes available.
 	if config.Database.URL == "" {
-		return fmt.Errorf("database URL is required")
+		fmt.Println("⚠️  WARNING: DATABASE_URL is not set. Server will start in degraded mode.")
 	}
 
+	// Kafka is optional — noop producer is used when not configured
 	if config.Kafka.BootstrapServers == "" {
-		return fmt.Errorf("kafka bootstrap servers are required")
+		fmt.Println("ℹ️  Kafka bootstrap servers not configured — analytics will be disabled.")
 	}
 
 	return nil

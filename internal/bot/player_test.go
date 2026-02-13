@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"connect4-multiplayer/pkg/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +51,7 @@ func TestCreateBot_Hard(t *testing.T) {
 
 func TestCreateBot_UniqueIDs(t *testing.T) {
 	service := NewBotPlayerService()
-	
+
 	bot1 := service.CreateBot(DifficultyMedium)
 	bot2 := service.CreateBot(DifficultyMedium)
 	bot3 := service.CreateBot(DifficultyHard)
@@ -75,23 +76,33 @@ func TestIsBot(t *testing.T) {
 }
 
 func TestDifficulty_SearchDepth(t *testing.T) {
-	assert.Equal(t, 2, DifficultyEasy.SearchDepth())
+	assert.Equal(t, 1, DifficultyEasy.SearchDepth())
 	assert.Equal(t, 4, DifficultyMedium.SearchDepth())
-	assert.Equal(t, 7, DifficultyHard.SearchDepth())
-	
+	assert.Equal(t, 8, DifficultyHard.SearchDepth())
+
 	// Default case
 	var unknown Difficulty = 99
 	assert.Equal(t, 4, unknown.SearchDepth())
 }
 
 func TestDifficulty_HumanDelay(t *testing.T) {
-	assert.Equal(t, 500*time.Millisecond, DifficultyEasy.HumanDelay())
-	assert.Equal(t, 300*time.Millisecond, DifficultyMedium.HumanDelay())
-	assert.Equal(t, 100*time.Millisecond, DifficultyHard.HumanDelay())
-	
+	assert.Equal(t, 600*time.Millisecond, DifficultyEasy.HumanDelay())
+	assert.Equal(t, 400*time.Millisecond, DifficultyMedium.HumanDelay())
+	assert.Equal(t, 200*time.Millisecond, DifficultyHard.HumanDelay())
+
 	// Default case
 	var unknown Difficulty = 99
-	assert.Equal(t, 300*time.Millisecond, unknown.HumanDelay())
+	assert.Equal(t, 400*time.Millisecond, unknown.HumanDelay())
+}
+
+func TestDifficulty_String(t *testing.T) {
+	assert.Equal(t, "Easy", DifficultyEasy.String())
+	assert.Equal(t, "Medium", DifficultyMedium.String())
+	assert.Equal(t, "Hard", DifficultyHard.String())
+
+	// Default case
+	var unknown Difficulty = 99
+	assert.Equal(t, "Medium", unknown.String())
 }
 
 func TestGetBotMove_ValidMove(t *testing.T) {
@@ -185,10 +196,10 @@ func TestGetBotMove_RespectsContextCancellation(t *testing.T) {
 func TestGetBotMove_HandlesFullBoard(t *testing.T) {
 	service := NewBotPlayerService()
 	bot := service.CreateBot(DifficultyMedium)
-	
+
 	// Create a nearly full board with one valid move
 	board := models.NewBoard()
-	
+
 	// Fill all columns except column 3
 	for col := 0; col < 7; col++ {
 		if col == 3 {

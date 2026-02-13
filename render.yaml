@@ -52,7 +52,7 @@ services:
       - key: KAFKA_CONSUMER_GROUP
         value: analytics-service
 
-databases:
-  - name: connect4-db
-    databaseName: connect4
-    user: connect4_user
+# NOTE: Database is hosted externally (Neon Postgres).
+# Set DATABASE_URL in Render's Environment Variables to your Neon connection string.
+# Example: postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/connect4?sslmode=require
+# Do NOT use Render's managed database — the free tier expires after 90 days.

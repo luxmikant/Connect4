@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Cpu, Globe, ArrowRight, Trophy, Users, Link as LinkIcon } from 'lucide-react';
+import { User, Cpu, Globe, ArrowRight, Trophy, Users, Link as LinkIcon, Zap, Brain, Flame } from 'lucide-react';
 import { usePlayer } from '../hooks/usePlayer';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrCreatePlayer } from '../services/playerService';
@@ -12,6 +12,7 @@ export const Lobby: React.FC = () => {
     const [gameMode, setGameMode] = useState<'matchmaking' | 'bot' | 'custom'>('matchmaking');
     const [customRoomAction, setCustomRoomAction] = useState<'create' | 'join'>('create');
     const [roomCode, setRoomCode] = useState('');
+    const [botDifficulty, setBotDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
     const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
     const { setUsername } = usePlayer();
     const { user, profile } = useAuth();
@@ -41,6 +42,9 @@ export const Lobby: React.FC = () => {
             
             setUsername(name.trim());
             localStorage.setItem('connect4_gameMode', gameMode);
+            if (gameMode === 'bot') {
+                localStorage.setItem('connect4_botDifficulty', botDifficulty);
+            }
             
             // For custom room join, navigate with room code as query param
             if (gameMode === 'custom' && customRoomAction === 'join' && roomCode.trim()) {
@@ -57,6 +61,9 @@ export const Lobby: React.FC = () => {
             // Continue anyway for guest users
             setUsername(name.trim());
             localStorage.setItem('connect4_gameMode', gameMode);
+            if (gameMode === 'bot') {
+                localStorage.setItem('connect4_botDifficulty', botDifficulty);
+            }
             
             if (gameMode === 'custom' && customRoomAction === 'join' && roomCode.trim()) {
                 localStorage.setItem('connect4_customRoomAction', 'join');
@@ -235,6 +242,69 @@ export const Lobby: React.FC = () => {
                             )}
                         </AnimatePresence>
 
+                        {/* Bot Difficulty Selection */}
+                        <AnimatePresence>
+                            {gameMode === 'bot' && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="space-y-2 overflow-hidden"
+                                >
+                                    <label className="text-xs font-mono text-emerald-400 uppercase tracking-widest pl-1">Difficulty</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            onClick={() => setBotDifficulty('easy')}
+                                            className={cn(
+                                                "relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-300 gap-1.5 overflow-hidden",
+                                                botDifficulty === 'easy' 
+                                                    ? "bg-green-600/20 border-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.2)]" 
+                                                    : "bg-slate-800/30 border-slate-700 text-slate-400 hover:bg-slate-800"
+                                            )}
+                                        >
+                                            <Zap className={cn("w-5 h-5", botDifficulty === 'easy' ? "text-green-400" : "text-slate-500")} />
+                                            <span className="text-xs font-bold">EASY</span>
+                                            {botDifficulty === 'easy' && (
+                                                <motion.div layoutId="diff-ring" className="absolute inset-0 border-2 border-green-500 rounded-xl" />
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={() => setBotDifficulty('medium')}
+                                            className={cn(
+                                                "relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-300 gap-1.5 overflow-hidden",
+                                                botDifficulty === 'medium' 
+                                                    ? "bg-amber-600/20 border-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.2)]" 
+                                                    : "bg-slate-800/30 border-slate-700 text-slate-400 hover:bg-slate-800"
+                                            )}
+                                        >
+                                            <Brain className={cn("w-5 h-5", botDifficulty === 'medium' ? "text-amber-400" : "text-slate-500")} />
+                                            <span className="text-xs font-bold">MEDIUM</span>
+                                            {botDifficulty === 'medium' && (
+                                                <motion.div layoutId="diff-ring" className="absolute inset-0 border-2 border-amber-500 rounded-xl" />
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={() => setBotDifficulty('hard')}
+                                            className={cn(
+                                                "relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-300 gap-1.5 overflow-hidden",
+                                                botDifficulty === 'hard' 
+                                                    ? "bg-red-600/20 border-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.2)]" 
+                                                    : "bg-slate-800/30 border-slate-700 text-slate-400 hover:bg-slate-800"
+                                            )}
+                                        >
+                                            <Flame className={cn("w-5 h-5", botDifficulty === 'hard' ? "text-red-400" : "text-slate-500")} />
+                                            <span className="text-xs font-bold">HARD</span>
+                                            {botDifficulty === 'hard' && (
+                                                <motion.div layoutId="diff-ring" className="absolute inset-0 border-2 border-red-500 rounded-xl" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
                         {/* Description */}
                         <AnimatePresence mode="wait">
                             <motion.p
@@ -247,7 +317,11 @@ export const Lobby: React.FC = () => {
                                 {gameMode === 'matchmaking' 
                                     ? 'Global matchmaking system. Auto-fallback to Bot after 10s.' 
                                     : gameMode === 'bot'
-                                    ? 'Training simulation against Minimax algorithm.'
+                                    ? botDifficulty === 'easy'
+                                        ? 'Casual mode — bot makes mistakes. Great for learning!'
+                                        : botDifficulty === 'hard'
+                                        ? 'Maximum challenge — bot plays near-perfect moves.'
+                                        : 'Balanced challenge — bot plays smart but beatable.'
                                     : customRoomAction === 'create'
                                     ? 'Create a private room and share the code with a friend.'
                                     : 'Enter your friend\'s room code to join.'}

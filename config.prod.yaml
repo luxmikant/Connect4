@@ -11,11 +11,13 @@ server:
   write_timeout: 30
 
 database:
-  # Set via DATABASE_URL environment variable
+  # Set via DATABASE_URL environment variable (Neon Postgres)
+  # Example: postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/connect4?sslmode=require
   url: ""
-  max_open_conns: 50
-  max_idle_conns: 10
-  conn_max_lifetime: 600
+  # Neon serverless has a 100 connection limit on free tier — keep pool conservative
+  max_open_conns: 20
+  max_idle_conns: 5
+  conn_max_lifetime: 300
   ssl_mode: "require"
 
 kafka:

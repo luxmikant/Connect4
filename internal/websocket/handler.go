@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +24,9 @@ type GameMessageHandler struct {
 	matchmakingService matchmaking.MatchmakingService
 	hub                *Hub
 	botService         bot.BotPlayerService
+	// Track bot difficulty per game
+	gameDifficulty   map[string]bot.Difficulty
+	gameDifficultyMu sync.RWMutex
 }
 
 // NewGameMessageHandler creates a new game message handler
@@ -31,6 +36,7 @@ func NewGameMessageHandler(gameService game.GameService, matchmakingService matc
 		matchmakingService: matchmakingService,
 		hub:                hub,
 		botService:         bot.NewBotPlayerService(),
+		gameDifficulty:     make(map[string]bot.Difficulty),
 	}
 
 	// Set up matchmaking callbacks
@@ -140,7 +146,20 @@ func (h *GameMessageHandler) handlePlayWithBot(ctx context.Context, conn *Connec
 		return fmt.Errorf("invalid username")
 	}
 
-	log.Printf("Player %s requesting bot game", username)
+	// Parse difficulty (default to medium)
+	difficulty := bot.DifficultyMedium
+	if diffStr, ok := message.Payload["difficulty"].(string); ok {
+		switch diffStr {
+		case "easy":
+			difficulty = bot.DifficultyEasy
+		case "hard":
+			difficulty = bot.DifficultyHard
+		default:
+			difficulty = bot.DifficultyMedium
+		}
+	}
+
+	log.Printf("Player %s requesting bot game (difficulty: %d)", username, difficulty)
 
 	// Update connection with username and re-register in hub
 	oldUserID := conn.GetUserID()
@@ -154,7 +173,12 @@ func (h *GameMessageHandler) handlePlayWithBot(ctx context.Context, conn *Connec
 		return fmt.Errorf("failed to create bot game: %w", err)
 	}
 
-	log.Printf("Bot game created: %s vs %s (Game ID: %s)", username, gameSession.Player2, gameSession.ID)
+	// Store the difficulty for this game
+	h.gameDifficultyMu.Lock()
+	h.gameDifficulty[gameSession.ID] = difficulty
+	h.gameDifficultyMu.Unlock()
+
+	log.Printf("Bot game created: %s vs %s (Game ID: %s, Difficulty: %d)", username, gameSession.Player2, gameSession.ID, difficulty)
 
 	// Set the game ID on the connection and add to game room BEFORE notifications
 	conn.SetGameID(gameSession.ID)
@@ -448,8 +472,17 @@ func (h *GameMessageHandler) isBot(username string) bool {
 
 // makeBotMove makes a move for the bot player
 func (h *GameMessageHandler) makeBotMove(ctx context.Context, gameID string) {
-	// Add a small delay to make it feel more natural
-	time.Sleep(500 * time.Millisecond)
+	// Look up difficulty for this game (default to medium)
+	h.gameDifficultyMu.RLock()
+	difficulty, exists := h.gameDifficulty[gameID]
+	h.gameDifficultyMu.RUnlock()
+	if !exists {
+		difficulty = bot.DifficultyMedium
+	}
+
+	// Add a human-like delay based on difficulty
+	delay := difficulty.HumanDelay()
+	time.Sleep(delay)
 
 	session, err := h.gameService.GetSession(ctx, gameID)
 	if err != nil {
@@ -481,8 +514,8 @@ func (h *GameMessageHandler) makeBotMove(ctx context.Context, gameID string) {
 		return
 	}
 
-	// Create a bot player and get the best move
-	botPlayer := h.botService.CreateBot(bot.DifficultyMedium)
+	// Create a bot player with the stored difficulty and get the best move
+	botPlayer := h.botService.CreateBot(difficulty)
 	board := &session.Board
 	column, err := h.botService.GetBotMove(ctx, botPlayer, board, botColor)
 	if err != nil {
@@ -492,6 +525,21 @@ func (h *GameMessageHandler) makeBotMove(ctx context.Context, gameID string) {
 			if session.Board.IsValidMove(col) {
 				column = col
 				break
+			}
+		}
+	}
+
+	// Easy mode: 40% chance to make a random move instead of the best one
+	if difficulty == bot.DifficultyEasy {
+		if rand.Float64() < 0.4 {
+			validCols := []int{}
+			for col := 0; col < 7; col++ {
+				if session.Board.IsValidMove(col) {
+					validCols = append(validCols, col)
+				}
+			}
+			if len(validCols) > 0 {
+				column = validCols[rand.Intn(len(validCols))]
 			}
 		}
 	}
@@ -584,6 +632,11 @@ func (h *GameMessageHandler) makeBotMove(ctx context.Context, gameID string) {
 		}
 
 		h.hub.BroadcastToGame(gameID, endData, "")
+
+		// Clean up difficulty tracking for this game
+		h.gameDifficultyMu.Lock()
+		delete(h.gameDifficulty, gameID)
+		h.gameDifficultyMu.Unlock()
 	}
 }
 
