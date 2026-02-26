@@ -182,7 +182,9 @@ func (h *GameMessageHandler) handlePlayWithBot(ctx context.Context, conn *Connec
 
 	// Set the game ID on the connection and add to game room BEFORE notifications
 	conn.SetGameID(gameSession.ID)
+	h.hub.mu.Lock()
 	h.hub.addToGameRoom(conn)
+	h.hub.mu.Unlock()
 
 	// Call the bot game created handler
 	if err := h.onBotGameCreated(ctx, username, gameSession); err != nil {
@@ -223,7 +225,9 @@ func (h *GameMessageHandler) handleCreateCustomRoom(ctx context.Context, conn *C
 	conn.SetGameID(gameSession.ID)
 
 	// Add creator to game room
+	h.hub.mu.Lock()
 	h.hub.addToGameRoom(conn)
+	h.hub.mu.Unlock()
 
 	// Generate room URL (assumes frontend is at the same host)
 	roomURL := fmt.Sprintf("/game?room=%s", roomCode)
@@ -284,7 +288,9 @@ func (h *GameMessageHandler) handleJoinCustomRoom(ctx context.Context, conn *Con
 	conn.SetGameID(gameSession.ID)
 
 	// Add player to game room
+	h.hub.mu.Lock()
 	h.hub.addToGameRoom(conn)
+	h.hub.mu.Unlock()
 
 	// Check if this is the creator reconnecting (status is still waiting)
 	if gameSession.Player1 == username && gameSession.Status == models.StatusWaiting {
@@ -330,13 +336,15 @@ func (h *GameMessageHandler) handleRematchCustomRoom(ctx context.Context, conn *
 	}
 
 	// Move players to new game room
+	h.hub.mu.Lock()
 	for _, player := range []string{newSession.Player1, newSession.Player2} {
-		if playerConn, exists := h.hub.GetConnection(player); exists {
+		if playerConn, exists := h.hub.connections[player]; exists {
 			h.hub.removeFromGameRoom(playerConn)
 			playerConn.SetGameID(newSession.ID)
 			h.hub.addToGameRoom(playerConn)
 		}
 	}
+	h.hub.mu.Unlock()
 
 	// Notify both players that the rematch has started
 	h.notifyGameStarted(newSession)
@@ -435,6 +443,16 @@ func (h *GameMessageHandler) sendQueueStatusUpdates(ctx context.Context, conn *C
 func (h *GameMessageHandler) onGameCreated(ctx context.Context, player1, player2 string, gameSession *models.GameSession) error {
 	log.Printf("Game created: %s vs %s (Game ID: %s)", player1, player2, gameSession.ID)
 
+	// Set up both players' connections in the game room so broadcasts work
+	for _, player := range []string{player1, player2} {
+		if conn, exists := h.hub.GetConnection(player); exists {
+			conn.SetGameID(gameSession.ID)
+			h.hub.mu.Lock()
+			h.hub.addToGameRoom(conn)
+			h.hub.mu.Unlock()
+		}
+	}
+
 	// Notify both players that a match was found
 	h.notifyMatchFound(player1, gameSession.ID, player2, false)
 	h.notifyMatchFound(player2, gameSession.ID, player1, false)
@@ -448,6 +466,18 @@ func (h *GameMessageHandler) onGameCreated(ctx context.Context, player1, player2
 // onBotGameCreated is called when a player vs bot game is created
 func (h *GameMessageHandler) onBotGameCreated(ctx context.Context, player string, gameSession *models.GameSession) error {
 	log.Printf("Bot game created: %s vs %s (Game ID: %s)", player, gameSession.Player2, gameSession.ID)
+
+	// Ensure the player's connection is set up in the game room.
+	// When called from handlePlayWithBot, the connection is already set up.
+	// When called from the matchmaking timeout, it is not.
+	if conn, exists := h.hub.GetConnection(player); exists {
+		if conn.GetGameID() != gameSession.ID {
+			conn.SetGameID(gameSession.ID)
+			h.hub.mu.Lock()
+			h.hub.addToGameRoom(conn)
+			h.hub.mu.Unlock()
+		}
+	}
 
 	// Notify player that a bot match was found
 	h.notifyMatchFound(player, gameSession.ID, gameSession.Player2, true)

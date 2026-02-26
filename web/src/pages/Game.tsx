@@ -8,7 +8,7 @@ import { MessageType } from '../types/websocket';
 import { usePlayer } from '../hooks/usePlayer';
 import { useGameSound } from '../hooks/useGameSound';
 import confetti from 'canvas-confetti';
-import { Loader2, ArrowLeft, Users, Cpu, Copy, Check, Share2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Users, Cpu, Copy, Check, Share2, Sparkles, Trophy } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 
@@ -120,7 +120,7 @@ export const Game: React.FC = () => {
           particleCount: 150,
           spread: 70,
           origin: { y: 0.6 },
-          colors: ['#f43f5e', '#fbbf24', '#3b82f6']
+          colors: ['#d946ef', '#f59e0b', '#10b981']
         });
       } else {
         playSound('lose');
@@ -239,7 +239,7 @@ export const Game: React.FC = () => {
               {typeof navigator.share === 'function' && (
                 <button
                   onClick={handleShareRoom}
-                  className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-300 px-4 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+                  className="bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
                 >
                   <Share2 className="w-4 h-4" />
                   Share
@@ -320,7 +320,7 @@ export const Game: React.FC = () => {
           <div className="flex gap-4 justify-center">
             <button 
               onClick={handlePlayAgain}
-              className="px-6 py-2 bg-game-accent hover:bg-blue-600 text-white rounded-lg font-bold shadow-lg transition-all"
+              className="px-6 py-2 bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 text-white rounded-lg font-bold shadow-lg shadow-fuchsia-500/25 transition-all"
             >
               Play Again
             </button>
@@ -339,35 +339,38 @@ export const Game: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-game-bg text-white font-heading overflow-hidden relative">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white font-heading overflow-hidden relative">
       <Toaster position="top-center" />
       
       {/* Ambient Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[100px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/20 rounded-full blur-[120px]" />
+        <div className="absolute top-[30%] left-[35%] w-[35%] h-[35%] bg-amber-500/10 rounded-full blur-[120px]" />
       </div>
 
       <div className="relative z-10 container mx-auto px-4 py-6 md:py-10 flex flex-col items-center h-full min-h-screen">
         
         {/* Header Bar */}
-        <div className="w-full max-w-4xl flex justify-between items-center mb-8 md:mb-12">
+        <div className="w-full max-w-5xl flex justify-between items-center mb-8 md:mb-10 px-3 py-3 md:px-5 md:py-4 rounded-2xl bg-slate-900/45 backdrop-blur-xl border border-white/10 shadow-[0_20px_45px_rgba(2,6,23,0.45)]">
           <button 
             onClick={handleBackToLobby}
             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors group"
           >
-            <div className="p-2 rounded-full bg-slate-800 group-hover:bg-slate-700 transition-colors">
+            <div className="p-2 rounded-full bg-slate-800/90 group-hover:bg-slate-700 transition-colors border border-slate-700/80">
               <ArrowLeft size={20} />
             </div>
             <span className="hidden md:inline font-medium">Leave Game</span>
           </button>
 
-          <div className="flex items-center gap-4 bg-slate-800/50 backdrop-blur rounded-full px-6 py-2 border border-slate-700">
-            {gameMode === 'bot' ? <Cpu size={18} className="text-purple-400" /> : <Users size={18} className="text-blue-400" />}
-            <span className="font-mono text-sm tracking-wider text-slate-300">
-              {gameMode === 'bot' 
-                ? `AI — ${botDifficulty.toUpperCase()}`
-                : 'RANKED MATCH'}
+          <div className="hidden md:flex items-center gap-2 bg-slate-800/60 rounded-full px-3 py-2 border border-slate-700/80">
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-slate-200 border border-slate-700/70">
+              {gameMode === 'bot' ? <Cpu size={14} className="text-purple-400" /> : <Users size={14} className="text-emerald-300" />}
+              {gameMode === 'bot' ? `AI • ${botDifficulty.toUpperCase()}` : 'RANKED MATCH'}
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-amber-300 border border-amber-500/20">
+              <Trophy size={14} />
+              LIVE MATCH
             </span>
           </div>
 
@@ -386,9 +389,16 @@ export const Game: React.FC = () => {
         </div>
 
         {/* Main Game Area */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-8 md:gap-12 w-full">
+        <div className="w-full max-w-5xl mb-6">
+          <div className="flex md:hidden items-center justify-center gap-2 rounded-full bg-slate-900/70 border border-slate-700/80 px-3 py-2 text-xs font-semibold text-slate-200 w-fit mx-auto">
+            {gameMode === 'bot' ? <Cpu size={14} className="text-purple-400" /> : <Users size={14} className="text-emerald-300" />}
+            {gameMode === 'bot' ? `AI • ${botDifficulty.toUpperCase()}` : 'RANKED MATCH'}
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center gap-8 md:gap-10 w-full">
            {/* Game Status/Notification Area */}
-           <div className="h-20 flex items-center justify-center w-full">
+           <div className="min-h-[88px] flex items-center justify-center w-full">
               {getStatusContent()}
            </div>
 
@@ -402,8 +412,11 @@ export const Game: React.FC = () => {
            </div>
 
            {/* Mobile Turn Indicator (Bottom) */}
-           <div className="md:hidden w-full px-4 text-center text-sm text-slate-500 pb-4">
-              {isMyTurn ? "Tap a column to drop your piece" : "Waiting for opponent..."}
+           <div className="md:hidden w-full px-4 pb-4">
+             <div className="text-center text-sm text-slate-300 bg-slate-900/60 border border-slate-700/70 rounded-xl py-2.5 px-3 inline-flex items-center gap-2 mx-auto">
+               <Sparkles className="w-4 h-4 text-fuchsia-300" />
+               {isMyTurn ? "Your turn • tap a column" : "Opponent is thinking..."}
+             </div>
            </div>
         </div>
       </div>

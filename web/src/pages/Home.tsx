@@ -25,9 +25,9 @@ export const Home = () => {
       <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
         {/* Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[10%] left-[5%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[150px]" />
-          <div className="absolute bottom-[10%] right-[5%] w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[150px]" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/5 rounded-full blur-[100px]" />
+          <div className="absolute top-[10%] left-[5%] w-[600px] h-[600px] bg-fuchsia-600/20 rounded-full blur-[150px]" />
+          <div className="absolute bottom-[10%] right-[5%] w-[500px] h-[500px] bg-emerald-500/15 rounded-full blur-[150px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-500/10 rounded-full blur-[100px]" />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
@@ -44,7 +44,7 @@ export const Home = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-8"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-300 text-sm font-medium mb-8"
               >
                 <Sparkles className="w-4 h-4" />
                 AI-Powered Strategy Game
@@ -54,7 +54,7 @@ export const Home = () => {
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-6">
                 The Classic Strategy.
                 <br />
-                <span className="bg-gradient-to-r from-blue-400 via-blue-500 to-purple-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-fuchsia-300 via-violet-400 to-amber-300 bg-clip-text text-transparent">
                   Reimagined.
                 </span>
               </h1>
@@ -71,7 +71,7 @@ export const Home = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => navigate('/lobby')}
-                  className="group w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-lg shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center justify-center gap-3"
+                  className="group w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white font-semibold text-lg shadow-xl shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 transition-all flex items-center justify-center gap-3"
                 >
                   <Play className="w-5 h-5 fill-current" />
                   Start Playing
@@ -143,7 +143,7 @@ export const Home = () => {
                 icon={<Cpu className="w-6 h-6" />}
                 title="Smart AI"
                 description="Powered by Minimax Algorithm with alpha-beta pruning. Three difficulty levels to challenge any skill."
-                gradient="from-blue-500 to-blue-600"
+                gradient="from-fuchsia-500 to-violet-600"
               />
             </ScrollReveal>
 
@@ -249,7 +249,7 @@ export const Home = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/lobby')}
-              className="group px-10 py-5 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all inline-flex items-center gap-3"
+              className="group px-10 py-5 rounded-full bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white font-semibold text-xl shadow-xl shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 transition-all inline-flex items-center gap-3"
             >
               <Play className="w-6 h-6 fill-current" />
               Start Playing Now
@@ -283,7 +283,7 @@ const Step = ({
   description: string;
 }) => (
   <div className="text-center">
-    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-xl mb-6 shadow-lg shadow-blue-500/25">
+    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-violet-600 text-white font-bold text-xl mb-6 shadow-lg shadow-fuchsia-500/25">
       {number}
     </div>
     <h3 className="text-xl font-bold text-slate-900 mb-3">{title}</h3>

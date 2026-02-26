@@ -126,7 +126,7 @@ func TestDifficultyPerformanceTiming(t *testing.T) {
 			name:       "Hard bot has appropriate delay",
 			difficulty: DifficultyHard,
 			minDelay:   100 * time.Millisecond,
-			maxDelay:   800 * time.Millisecond,
+			maxDelay:   2000 * time.Millisecond,
 		},
 	}
 

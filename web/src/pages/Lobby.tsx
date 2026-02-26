@@ -90,7 +90,7 @@ export const Lobby: React.FC = () => {
             {/* Background Effects */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[100px] animate-pulse-glow" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[100px] animate-pulse-glow delay-700" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-500/10 rounded-full blur-[100px] animate-pulse-glow delay-700" />
             </div>
 
             <motion.div 
@@ -110,9 +110,9 @@ export const Lobby: React.FC = () => {
                         
                         {/* Name Input */}
                         <div className="space-y-2">
-                            <label className="text-xs font-mono text-cyan-400 uppercase tracking-widest pl-1">Codename</label>
+                            <label className="text-xs font-mono text-fuchsia-300 uppercase tracking-widest pl-1">Codename</label>
                             <div className="relative group">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-fuchsia-300 transition-colors" />
                                 <input
                                     type="text"
                                     value={name}
@@ -120,7 +120,7 @@ export const Lobby: React.FC = () => {
                                     onKeyPress={handleKeyPress}
                                     placeholder="ENTER USERNAME..."
                                     className={cn(
-                                        "w-full bg-slate-800/50 border border-slate-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono placeholder:text-slate-600",
+                                        "w-full bg-slate-800/50 border border-slate-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-fuchsia-500 focus:ring-1 focus:ring-fuchsia-500 transition-all font-mono placeholder:text-slate-600",
                                         profile?.username && "opacity-75 cursor-not-allowed bg-slate-800/80"
                                     )}
                                     autoFocus
@@ -134,21 +134,21 @@ export const Lobby: React.FC = () => {
 
                         {/* Mode Selection */}
                         <div className="space-y-2">
-                            <label className="text-xs font-mono text-cyan-400 uppercase tracking-widest pl-1">Battle Mode</label>
+                            <label className="text-xs font-mono text-fuchsia-300 uppercase tracking-widest pl-1">Battle Mode</label>
                             <div className="grid grid-cols-3 gap-3">
                                 <button
                                     onClick={() => setGameMode('matchmaking')}
                                     className={cn(
                                         "relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-300 gap-2 overflow-hidden",
                                         gameMode === 'matchmaking' 
-                                            ? "bg-blue-600/20 border-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.2)]" 
+                                            ? "bg-violet-600/20 border-violet-500 text-white shadow-[0_0_20px_rgba(139,92,246,0.25)]" 
                                             : "bg-slate-800/30 border-slate-700 text-slate-400 hover:bg-slate-800"
                                     )}
                                 >
-                                    <Globe className={cn("w-6 h-6", gameMode === 'matchmaking' ? "text-blue-400" : "text-slate-500")} />
+                                    <Globe className={cn("w-6 h-6", gameMode === 'matchmaking' ? "text-violet-300" : "text-slate-500")} />
                                     <span className="text-xs font-bold">ONLINE</span>
                                     {gameMode === 'matchmaking' && (
-                                        <motion.div layoutId="active-ring" className="absolute inset-0 border-2 border-blue-500 rounded-xl" />
+                                        <motion.div layoutId="active-ring" className="absolute inset-0 border-2 border-violet-500 rounded-xl" />
                                     )}
                                 </button>
 
@@ -335,7 +335,7 @@ export const Lobby: React.FC = () => {
                                 whileTap={{ scale: 0.98 }}
                                 onClick={handleJoin}
                                 disabled={!name.trim() || isCreatingPlayer || (gameMode === 'custom' && customRoomAction === 'join' && !roomCode.trim())}
-                                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group transition-all"
+                                className="w-full bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-fuchsia-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group transition-all"
                             >
                                 {isCreatingPlayer ? (
                                     <>

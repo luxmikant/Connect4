@@ -6,9 +6,9 @@
   /* Colors - MetaMask Style Light Theme */
   --color-background: #ffffff;
   --color-background-alt: #f8fafc;
-  --color-primary: #2563eb;
-  --color-primary-dark: #1d4ed8;
-  --color-accent: #ea580c;
+  --color-primary: #a21caf;
+  --color-primary-dark: #86198f;
+  --color-accent: #10b981;
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
   --color-text-muted: #94a3b8;
@@ -19,7 +19,7 @@
   --color-game-slot: #0f172a;
   --color-game-red: #f43f5e;
   --color-game-yellow: #fbbf24;
-  --color-game-accent: #3b82f6;
+  --color-game-accent: #a855f7;
 
   /* Fonts */
   --font-heading: 'Inter', system-ui, sans-serif;
@@ -32,8 +32,8 @@
   --animate-shimmer: shimmer 2s linear infinite;
 
   @keyframes pulse-glow {
-    0%, 100% { opacity: 1; box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
-    50% { opacity: 0.7; box-shadow: 0 0 10px rgba(59, 130, 246, 0.2); }
+    0%, 100% { opacity: 1; box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); }
+    50% { opacity: 0.7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.2); }
   }
 
   @keyframes drop-in {
@@ -98,7 +98,7 @@ body {
 
 /* Gradient Text */
 .gradient-text {
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #d946ef 0%, #10b981 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -112,7 +112,7 @@ body {
 
 /* Selection */
 ::selection {
-  background: rgba(37, 99, 235, 0.2);
-  color: #1e40af;
+  background: rgba(217, 70, 239, 0.2);
+  color: #86198f;
 }
 

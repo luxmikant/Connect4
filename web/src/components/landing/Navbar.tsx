@@ -40,11 +40,11 @@ export const Navbar = () => {
             whileTap={{ scale: 0.98 }}
             className="flex items-center gap-2"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/25">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-600 to-violet-600 flex items-center justify-center shadow-lg shadow-fuchsia-500/25">
               <span className="text-white font-bold text-lg">C4</span>
             </div>
             <span className={`text-xl font-bold tracking-tight ${isScrolled ? 'text-slate-900' : 'text-white'}`}>
-              Connect4<span className="text-blue-600">.ai</span>
+              Connect4<span className="text-fuchsia-600">.ai</span>
             </span>
           </motion.button>
 
@@ -69,7 +69,7 @@ export const Navbar = () => {
                       : 'bg-white/10 text-white hover:bg-white/20'
                   }`}
                 >
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-fuchsia-500 to-violet-600 flex items-center justify-center">
                     <span className="text-white text-sm font-bold">
                       {profile?.username?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
@@ -122,7 +122,7 @@ export const Navbar = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => navigate('/lobby')}
-                  className="px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all"
+                  className="px-6 py-2.5 rounded-full bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white font-semibold shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 transition-all"
                 >
                   Play Now
                 </motion.button>
@@ -176,7 +176,7 @@ export const Navbar = () => {
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={() => { navigate('/lobby'); setIsMobileMenuOpen(false); }}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-center"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white font-semibold text-center"
               >
                 Play Now
               </motion.button>
