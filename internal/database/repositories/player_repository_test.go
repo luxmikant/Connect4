@@ -68,7 +68,7 @@ func (suite *PlayerRepositoryTestSuite) TestCreate_NilPlayer() {
 
 func (suite *PlayerRepositoryTestSuite) TestGetByID_Success() {
 	ctx := context.Background()
-	
+
 	// Create test player
 	player := &models.Player{
 		ID:       "test-player-2",
@@ -86,7 +86,7 @@ func (suite *PlayerRepositoryTestSuite) TestGetByID_Success() {
 
 func (suite *PlayerRepositoryTestSuite) TestGetByID_NotFound() {
 	ctx := context.Background()
-	
+
 	retrieved, err := suite.repo.GetByID(ctx, "non-existent-id")
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), retrieved)
@@ -95,7 +95,7 @@ func (suite *PlayerRepositoryTestSuite) TestGetByID_NotFound() {
 
 func (suite *PlayerRepositoryTestSuite) TestGetByID_EmptyID() {
 	ctx := context.Background()
-	
+
 	retrieved, err := suite.repo.GetByID(ctx, "")
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), retrieved)
@@ -104,7 +104,7 @@ func (suite *PlayerRepositoryTestSuite) TestGetByID_EmptyID() {
 
 func (suite *PlayerRepositoryTestSuite) TestGetByUsername_Success() {
 	ctx := context.Background()
-	
+
 	// Create test player
 	player := &models.Player{
 		ID:       "test-player-3",
@@ -122,7 +122,7 @@ func (suite *PlayerRepositoryTestSuite) TestGetByUsername_Success() {
 
 func (suite *PlayerRepositoryTestSuite) TestUpdate_Success() {
 	ctx := context.Background()
-	
+
 	// Create test player
 	player := &models.Player{
 		ID:       "test-player-4",
@@ -145,7 +145,7 @@ func (suite *PlayerRepositoryTestSuite) TestUpdate_Success() {
 
 func (suite *PlayerRepositoryTestSuite) TestDelete_Success() {
 	ctx := context.Background()
-	
+
 	// Create test player
 	player := &models.Player{
 		ID:       "test-player-5",
@@ -167,7 +167,7 @@ func (suite *PlayerRepositoryTestSuite) TestDelete_Success() {
 
 func (suite *PlayerRepositoryTestSuite) TestList_Success() {
 	ctx := context.Background()
-	
+
 	// Create multiple test players
 	players := []*models.Player{
 		{ID: "test-player-6", Username: "testuser6"},
@@ -188,7 +188,7 @@ func (suite *PlayerRepositoryTestSuite) TestList_Success() {
 
 func (suite *PlayerRepositoryTestSuite) TestList_WithPagination() {
 	ctx := context.Background()
-	
+
 	// Test pagination with limit
 	retrieved, err := suite.repo.List(ctx, 2, 0)
 	assert.NoError(suite.T(), err)

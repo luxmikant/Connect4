@@ -21,19 +21,19 @@ type Service struct {
 // NewService creates a new WebSocket service
 func NewService(gameService game.GameService, matchmakingService matchmaking.MatchmakingService) *Service {
 	config := DefaultConnectionConfig()
-	
+
 	// Create hub first
 	hub := NewHub(nil, config) // messageHandler will be set later
-	
+
 	// Create message handler with matchmaking service
 	messageHandler := NewGameMessageHandler(gameService, matchmakingService, hub)
-	
+
 	// Set message handler in hub
 	hub.messageHandler = messageHandler
-	
+
 	// Create WebSocket handler
 	wsHandler := NewWebSocketHandler(hub, config)
-	
+
 	return &Service{
 		hub:                hub,
 		messageHandler:     messageHandler,
@@ -46,15 +46,15 @@ func NewService(gameService game.GameService, matchmakingService matchmaking.Mat
 // Start starts the WebSocket service
 func (s *Service) Start(ctx context.Context) error {
 	log.Println("Starting WebSocket service...")
-	
+
 	// Start matchmaking service
 	if err := s.matchmakingService.StartMatchmaking(ctx); err != nil {
 		return fmt.Errorf("failed to start matchmaking service: %w", err)
 	}
-	
+
 	// Start the hub in a goroutine
 	go s.hub.Run()
-	
+
 	log.Println("WebSocket service started successfully")
 	return nil
 }
@@ -62,12 +62,12 @@ func (s *Service) Start(ctx context.Context) error {
 // Stop stops the WebSocket service
 func (s *Service) Stop() error {
 	log.Println("Stopping WebSocket service...")
-	
+
 	// Stop matchmaking service
 	s.matchmakingService.StopMatchmaking()
-	
+
 	s.hub.Shutdown()
-	
+
 	log.Println("WebSocket service stopped")
 	return nil
 }
@@ -114,7 +114,7 @@ func (s *Service) SendMessageToUser(userID string, message []byte) error {
 	if !exists {
 		return ErrUserNotConnected
 	}
-	
+
 	conn.SendMessage(message)
 	return nil
 }
@@ -130,12 +130,12 @@ func (s *Service) NotifyGameStateChange(gameID string, gameState interface{}) er
 // NotifyPlayerMove notifies all players about a move
 func (s *Service) NotifyPlayerMove(gameID, player string, column, row int, board interface{}, nextTurn string, moveCount int) error {
 	msg := CreateMoveMadeMessage(gameID, player, column, row, board, nextTurn, moveCount)
-	
+
 	data, err := msg.ToJSON()
 	if err != nil {
 		return err
 	}
-	
+
 	s.BroadcastToGame(gameID, data, "")
 	return nil
 }
@@ -143,12 +143,12 @@ func (s *Service) NotifyPlayerMove(gameID, player string, column, row int, board
 // NotifyGameEnd notifies all players that a game has ended
 func (s *Service) NotifyGameEnd(gameID string, winner *string, reason string, duration int) error {
 	msg := CreateGameEndedMessage(gameID, winner, reason, duration)
-	
+
 	data, err := msg.ToJSON()
 	if err != nil {
 		return err
 	}
-	
+
 	s.BroadcastToGame(gameID, data, "")
 	return nil
 }

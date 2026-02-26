@@ -26,7 +26,7 @@ func main() {
 
 	// Run migrations
 	migrator := database.NewMigrator(db)
-	
+
 	switch *direction {
 	case "up":
 		log.Println("Running migrations...")

@@ -74,7 +74,7 @@ func (suite *GameSessionRepositoryTestSuite) TestCreate_NilGameSession() {
 
 func (suite *GameSessionRepositoryTestSuite) TestGetByID_Success() {
 	ctx := context.Background()
-	
+
 	// Create test game session
 	gameSession := &models.GameSession{
 		ID:          "test-game-2",
@@ -97,7 +97,7 @@ func (suite *GameSessionRepositoryTestSuite) TestGetByID_Success() {
 
 func (suite *GameSessionRepositoryTestSuite) TestGetByID_NotFound() {
 	ctx := context.Background()
-	
+
 	retrieved, err := suite.repo.GetByID(ctx, "non-existent-id")
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), retrieved)
@@ -106,7 +106,7 @@ func (suite *GameSessionRepositoryTestSuite) TestGetByID_NotFound() {
 
 func (suite *GameSessionRepositoryTestSuite) TestUpdate_Success() {
 	ctx := context.Background()
-	
+
 	// Create test game session
 	gameSession := &models.GameSession{
 		ID:          "test-game-3",
@@ -135,7 +135,7 @@ func (suite *GameSessionRepositoryTestSuite) TestUpdate_Success() {
 
 func (suite *GameSessionRepositoryTestSuite) TestGetActiveGames_Success() {
 	ctx := context.Background()
-	
+
 	// Create test game sessions with different statuses
 	gameSessions := []*models.GameSession{
 		{
@@ -172,7 +172,7 @@ func (suite *GameSessionRepositoryTestSuite) TestGetActiveGames_Success() {
 	// Get active games
 	activeGames, err := suite.repo.GetActiveGames(ctx)
 	assert.NoError(suite.T(), err)
-	
+
 	// Should return only waiting and in-progress games
 	activeCount := 0
 	for _, game := range activeGames {
@@ -185,7 +185,7 @@ func (suite *GameSessionRepositoryTestSuite) TestGetActiveGames_Success() {
 
 func (suite *GameSessionRepositoryTestSuite) TestGetGamesByPlayer_Success() {
 	ctx := context.Background()
-	
+
 	// Create test game sessions
 	gameSessions := []*models.GameSession{
 		{
@@ -218,7 +218,7 @@ func (suite *GameSessionRepositoryTestSuite) TestGetGamesByPlayer_Success() {
 
 	// Verify all games include the target player
 	for _, game := range playerGames {
-		assert.True(suite.T(), 
+		assert.True(suite.T(),
 			game.Player1 == "target-player" || game.Player2 == "target-player",
 			"Game should include target player")
 	}
@@ -226,7 +226,7 @@ func (suite *GameSessionRepositoryTestSuite) TestGetGamesByPlayer_Success() {
 
 func (suite *GameSessionRepositoryTestSuite) TestGetGameHistory_Success() {
 	ctx := context.Background()
-	
+
 	// Create completed game session
 	now := time.Now()
 	gameSession := &models.GameSession{
@@ -244,7 +244,7 @@ func (suite *GameSessionRepositoryTestSuite) TestGetGameHistory_Success() {
 	// Get game history
 	history, err := suite.repo.GetGameHistory(ctx, 10, 0)
 	assert.NoError(suite.T(), err)
-	
+
 	// Should contain at least the completed game
 	completedCount := 0
 	for _, game := range history {

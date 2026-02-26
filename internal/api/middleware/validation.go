@@ -49,7 +49,7 @@ func ValidateJSON(c *gin.Context, obj interface{}) error {
 		// Fallback to default validator
 		validatorInterface = validator.New()
 	}
-	
+
 	v := validatorInterface.(*validator.Validate)
 
 	// Validate struct

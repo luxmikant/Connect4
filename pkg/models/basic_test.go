@@ -12,7 +12,7 @@ func TestBasicModelFunctionality(t *testing.T) {
 		ID:       "test-player-1",
 		Username: "testuser",
 	}
-	
+
 	if player.Username != "testuser" {
 		t.Errorf("Expected username 'testuser', got '%s'", player.Username)
 	}

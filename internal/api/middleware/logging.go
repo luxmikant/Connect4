@@ -40,26 +40,26 @@ func Logging(config *LoggingConfig) gin.HandlerFunc {
 		}
 
 		start := time.Now()
-		
+
 		// Process request
 		c.Next()
 
 		// Calculate latency
 		latency := time.Since(start)
-		
+
 		// Get client IP
 		clientIP := c.ClientIP()
-		
+
 		// Get request method and path
 		method := c.Request.Method
 		statusCode := c.Writer.Status()
-		
+
 		// Get user agent
 		userAgent := c.Request.UserAgent()
-		
+
 		// Get request size
 		requestSize := c.Request.ContentLength
-		
+
 		// Get response size
 		responseSize := c.Writer.Size()
 

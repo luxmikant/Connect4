@@ -24,7 +24,7 @@ import (
 func TestSessionReconnectionManagement(t *testing.T) {
 	properties := gopter.NewProperties(nil)
 
-		properties.Property("for any player disconnection, the game session should be maintained for 30 seconds", prop.ForAll(
+	properties.Property("for any player disconnection, the game session should be maintained for 30 seconds", prop.ForAll(
 		func(player1Name, player2Name string) bool {
 			// Skip invalid inputs
 			if player1Name == "" || player2Name == "" || player1Name == player2Name {
@@ -289,7 +289,7 @@ func TestSessionReconnectionManagement(t *testing.T) {
 			// Verify only one connection exists for this user
 			// (the hub should have replaced the first connection with the second)
 			connectionCount := wsService.GetConnectionCount()
-			
+
 			// Should still be 1 connection (the new one replaced the old one)
 			return connectionCount == 1
 		},

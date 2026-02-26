@@ -145,32 +145,38 @@ func (b *Board) CheckWin() *PlayerColor {
 		}
 	}
 
-	// Check diagonal (top-left to bottom-right)
+	// Check diagonals via shared helper to avoid duplication
+	if w := b.checkDiagonal(1, 1); w != nil {
+		return w
+	}
+	if w := b.checkDiagonal(1, -1); w != nil {
+		return w
+	}
+
+	return nil
+}
+
+// checkDiagonal checks for a four-in-a-row along a diagonal direction.
+// dr is the row delta (always +1); dc is the column delta (+1 or -1).
+func (b *Board) checkDiagonal(dr, dc int) *PlayerColor {
+	colStart, colEnd := 0, 3
+	if dc < 0 {
+		colStart, colEnd = 3, 6
+	}
 	for row := 0; row < 3; row++ {
-		for col := 0; col < 4; col++ {
-			if b.Grid[row][col] != "" &&
-				b.Grid[row][col] == b.Grid[row+1][col+1] &&
-				b.Grid[row][col] == b.Grid[row+2][col+2] &&
-				b.Grid[row][col] == b.Grid[row+3][col+3] {
-				winner := b.Grid[row][col]
+		for col := colStart; col <= colEnd; col++ {
+			c := b.Grid[row][col]
+			if c == "" {
+				continue
+			}
+			if c == b.Grid[row+dr][col+dc] &&
+				c == b.Grid[row+2*dr][col+2*dc] &&
+				c == b.Grid[row+3*dr][col+3*dc] {
+				winner := c
 				return &winner
 			}
 		}
 	}
-
-	// Check diagonal (top-right to bottom-left)
-	for row := 0; row < 3; row++ {
-		for col := 3; col < 7; col++ {
-			if b.Grid[row][col] != "" &&
-				b.Grid[row][col] == b.Grid[row+1][col-1] &&
-				b.Grid[row][col] == b.Grid[row+2][col-2] &&
-				b.Grid[row][col] == b.Grid[row+3][col-3] {
-				winner := b.Grid[row][col]
-				return &winner
-			}
-		}
-	}
-
 	return nil
 }
 

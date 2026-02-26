@@ -65,17 +65,17 @@ func (m *Manager) GetConnectionStats() (map[string]interface{}, error) {
 	}
 
 	stats := sqlDB.Stats()
-	
+
 	return map[string]interface{}{
-		"max_open_connections":     stats.MaxOpenConnections,
-		"open_connections":         stats.OpenConnections,
-		"in_use":                  stats.InUse,
-		"idle":                    stats.Idle,
-		"wait_count":              stats.WaitCount,
-		"wait_duration":           stats.WaitDuration.String(),
-		"max_idle_closed":         stats.MaxIdleClosed,
-		"max_idle_time_closed":    stats.MaxIdleTimeClosed,
-		"max_lifetime_closed":     stats.MaxLifetimeClosed,
+		"max_open_connections": stats.MaxOpenConnections,
+		"open_connections":     stats.OpenConnections,
+		"in_use":               stats.InUse,
+		"idle":                 stats.Idle,
+		"wait_count":           stats.WaitCount,
+		"wait_duration":        stats.WaitDuration.String(),
+		"max_idle_closed":      stats.MaxIdleClosed,
+		"max_idle_time_closed": stats.MaxIdleTimeClosed,
+		"max_lifetime_closed":  stats.MaxLifetimeClosed,
 	}, nil
 }
 

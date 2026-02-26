@@ -347,16 +347,16 @@ func genPlayerData() gopter.Gen {
 		username := values[0].(string)
 		gamesPlayed := values[1].(int)
 		gamesWon := values[2].(int)
-		
+
 		// Ensure gamesWon <= gamesPlayed
 		if gamesWon > gamesPlayed {
 			gamesWon = gamesPlayed
 		}
-		
+
 		if username == "" {
 			username = "player"
 		}
-		
+
 		return playerTestData{
 			username:    username,
 			gamesPlayed: gamesPlayed,
@@ -374,7 +374,7 @@ func generateUsername(index int) string {
 func sortByWinsDescending(stats []*models.PlayerStats) []*models.PlayerStats {
 	result := make([]*models.PlayerStats, len(stats))
 	copy(result, stats)
-	
+
 	// Simple bubble sort for testing purposes
 	for i := 0; i < len(result)-1; i++ {
 		for j := 0; j < len(result)-i-1; j++ {

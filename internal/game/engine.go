@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"connect4-multiplayer/pkg/models"
 	"connect4-multiplayer/internal/database/repositories"
+	"connect4-multiplayer/pkg/models"
 )
 
 // Engine defines the interface for the Connect 4 game engine
@@ -13,11 +13,11 @@ type Engine interface {
 	// Game state operations
 	CreateGame(ctx context.Context, player1, player2 string) (*models.GameSession, error)
 	GetGame(ctx context.Context, gameID string) (*models.GameSession, error)
-	
+
 	// Move operations
 	MakeMove(ctx context.Context, gameID string, playerUsername string, column int) (*MoveResult, error)
 	ValidateMove(ctx context.Context, gameID string, playerUsername string, column int) error
-	
+
 	// Game state checks
 	CheckGameEnd(ctx context.Context, game *models.GameSession) (*GameEndResult, error)
 	IsPlayerTurn(ctx context.Context, game *models.GameSession, playerUsername string) bool
@@ -59,11 +59,11 @@ func (e *engine) CreateGame(ctx context.Context, player1, player2 string) (*mode
 	if player1 == "" || player2 == "" {
 		return nil, fmt.Errorf("player usernames cannot be empty")
 	}
-	
+
 	if player1 == player2 {
 		return nil, fmt.Errorf("players must have different usernames")
 	}
-	
+
 	game := &models.GameSession{
 		Player1:     player1,
 		Player2:     player2,
@@ -71,11 +71,11 @@ func (e *engine) CreateGame(ctx context.Context, player1, player2 string) (*mode
 		CurrentTurn: models.PlayerColorRed, // Player1 always starts as red
 		Board:       models.NewBoard(),
 	}
-	
+
 	if err := e.gameRepo.Create(ctx, game); err != nil {
 		return nil, fmt.Errorf("failed to create game: %w", err)
 	}
-	
+
 	return game, nil
 }
 
@@ -95,48 +95,48 @@ func (e *engine) MakeMove(ctx context.Context, gameID string, playerUsername str
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Validate the move
 	if err := e.ValidateMove(ctx, gameID, playerUsername, column); err != nil {
 		return nil, err
 	}
-	
+
 	// Get player color
 	playerColor := game.GetPlayerColor(playerUsername)
-	
+
 	// Calculate the row where the disc will land
 	row := game.Board.Height[column]
-	
+
 	// Make the move on the board
 	if err := game.Board.MakeMove(column, playerColor); err != nil {
 		return nil, fmt.Errorf("failed to make move on board: %w", err)
 	}
-	
+
 	// Create move record
 	move := &models.Move{
-		GameID:  gameID,
-		Player:  playerColor,
-		Column:  column,
-		Row:     row,
+		GameID: gameID,
+		Player: playerColor,
+		Column: column,
+		Row:    row,
 	}
-	
+
 	if err := e.moveRepo.Create(ctx, move); err != nil {
 		return nil, fmt.Errorf("failed to save move: %w", err)
 	}
-	
+
 	// Switch turns
 	if game.CurrentTurn == models.PlayerColorRed {
 		game.CurrentTurn = models.PlayerColorYellow
 	} else {
 		game.CurrentTurn = models.PlayerColorRed
 	}
-	
+
 	// Check if game has ended
 	gameEndResult, err := e.CheckGameEnd(ctx, game)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check game end: %w", err)
 	}
-	
+
 	// Update game status if ended
 	if gameEndResult.GameEnded {
 		if gameEndResult.IsDraw {
@@ -147,12 +147,12 @@ func (e *engine) MakeMove(ctx context.Context, gameID string, playerUsername str
 			game.Winner = gameEndResult.Winner
 		}
 	}
-	
+
 	// Update the game session
 	if err := e.gameRepo.Update(ctx, game); err != nil {
 		return nil, fmt.Errorf("failed to update game: %w", err)
 	}
-	
+
 	return &MoveResult{
 		Move:        move,
 		GameSession: game,
@@ -168,27 +168,27 @@ func (e *engine) ValidateMove(ctx context.Context, gameID string, playerUsername
 	if err != nil {
 		return err
 	}
-	
+
 	// Check if game is active
 	if !game.IsActive() {
 		return fmt.Errorf("game is not active (status: %s)", game.Status)
 	}
-	
+
 	// Check if it's the player's turn
 	if !e.IsPlayerTurn(ctx, game, playerUsername) {
 		return fmt.Errorf("it's not %s's turn", playerUsername)
 	}
-	
+
 	// Check if column is valid
 	if column < 0 || column >= 7 {
 		return fmt.Errorf("invalid column: %d (must be 0-6)", column)
 	}
-	
+
 	// Check if column is not full
 	if !game.Board.IsValidMove(column) {
 		return fmt.Errorf("column %d is full", column)
 	}
-	
+
 	return nil
 }
 
@@ -204,7 +204,7 @@ func (e *engine) CheckGameEnd(ctx context.Context, game *models.GameSession) (*G
 			Reason:    "four_in_a_row",
 		}, nil
 	}
-	
+
 	// Check for draw (board full)
 	if game.Board.IsFull() {
 		return &GameEndResult{
@@ -214,7 +214,7 @@ func (e *engine) CheckGameEnd(ctx context.Context, game *models.GameSession) (*G
 			Reason:    "board_full",
 		}, nil
 	}
-	
+
 	// Game continues
 	return &GameEndResult{
 		GameEnded: false,

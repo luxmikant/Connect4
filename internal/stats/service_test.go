@@ -115,7 +115,6 @@ func (suite *PlayerStatsServiceTestSuite) TestGetPlayerStats_NotFound() {
 	assert.Equal(suite.T(), models.ErrPlayerNotFound, err)
 }
 
-
 func (suite *PlayerStatsServiceTestSuite) TestGetLeaderboard_Success() {
 	expectedLeaderboard := []*models.PlayerStats{
 		{Username: "player1", GamesWon: 10, WinRate: 0.8},

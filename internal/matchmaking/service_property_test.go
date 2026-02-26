@@ -26,8 +26,8 @@ func TestMatchmakingQueueManagementProperty(t *testing.T) {
 	properties := gopter.NewProperties(nil)
 
 	// Property 1: Matchmaking Queue Management
-	// For any player with a valid username, joining the matchmaking queue should either 
-	// pair them with another waiting player or start a bot game within 10 seconds, 
+	// For any player with a valid username, joining the matchmaking queue should either
+	// pair them with another waiting player or start a bot game within 10 seconds,
 	// ensuring no duplicate usernames in active sessions.
 	// Validates: Requirements 1.1, 1.2, 1.3, 1.5
 	properties.Property("matchmaking queue management", prop.ForAll(
@@ -49,12 +49,12 @@ func TestMatchmakingQueueManagementProperty(t *testing.T) {
 
 			// Create mock game service
 			mockGameService := new(MockGameService)
-			
+
 			// Mock: no players in active games initially
 			for _, username := range validUsernames {
 				mockGameService.On("GetActiveSessionByPlayer", mock.Anything, username).Return(nil, fmt.Errorf("not found"))
 			}
-			
+
 			// Mock: game creation for pairs and bot games
 			mockGameService.On("CreateSession", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(
 				&models.GameSession{
@@ -77,12 +77,12 @@ func TestMatchmakingQueueManagementProperty(t *testing.T) {
 			// Track game creations
 			var createdGames []*models.GameSession
 			var botGames []*models.GameSession
-			
+
 			service.SetGameCreatedCallback(func(ctx context.Context, player1, player2 string, gameSession *models.GameSession) error {
 				createdGames = append(createdGames, gameSession)
 				return nil
 			})
-			
+
 			service.SetBotGameCallback(func(ctx context.Context, player string, gameSession *models.GameSession) error {
 				botGames = append(botGames, gameSession)
 				return nil
@@ -173,7 +173,7 @@ func genUsername() gopter.Gen {
 			return len(s) >= 3 && len(s) <= 20
 		}),
 		// Some invalid usernames for edge case testing
-		1: gen.Const(""), // Empty username
+		1: gen.Const(""),   // Empty username
 		2: gen.Const("ab"), // Too short
 	})
 }
@@ -269,7 +269,7 @@ func TestMatchmakingDuplicatePreventionProperty(t *testing.T) {
 
 			// Create mock game service
 			mockGameService := new(MockGameService)
-			
+
 			// Mock: player already in active game
 			activeGame := &models.GameSession{
 				ID:      "existing-game",

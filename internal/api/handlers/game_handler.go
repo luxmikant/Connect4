@@ -57,7 +57,7 @@ func (h *GameHandler) CreateGame(c *gin.Context) {
 	var req CreateGameRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error: "Invalid request body",
+			Error:   "Invalid request body",
 			Details: err.Error(),
 		})
 		return
@@ -66,7 +66,7 @@ func (h *GameHandler) CreateGame(c *gin.Context) {
 	// Validate request
 	if err := h.validator.Struct(req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error: "Validation failed",
+			Error:   "Validation failed",
 			Details: err.Error(),
 		})
 		return
@@ -84,7 +84,7 @@ func (h *GameHandler) CreateGame(c *gin.Context) {
 	session, err := h.gameService.CreateSession(c.Request.Context(), req.Player1, req.Player2)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error: "Failed to create game session",
+			Error:   "Failed to create game session",
 			Details: err.Error(),
 		})
 		return
@@ -123,7 +123,7 @@ func (h *GameHandler) GetGameState(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error: "Failed to retrieve game state",
+			Error:   "Failed to retrieve game state",
 			Details: err.Error(),
 		})
 		return
@@ -158,7 +158,7 @@ func (h *GameHandler) MakeMove(c *gin.Context) {
 	var req MakeMoveRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error: "Invalid request body",
+			Error:   "Invalid request body",
 			Details: err.Error(),
 		})
 		return
@@ -167,7 +167,7 @@ func (h *GameHandler) MakeMove(c *gin.Context) {
 	// Validate request
 	if err := h.validator.Struct(req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error: "Validation failed",
+			Error:   "Validation failed",
 			Details: err.Error(),
 		})
 		return
@@ -183,7 +183,7 @@ func (h *GameHandler) MakeMove(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error: "Failed to retrieve game state",
+			Error:   "Failed to retrieve game state",
 			Details: err.Error(),
 		})
 		return
@@ -218,7 +218,7 @@ func (h *GameHandler) MakeMove(c *gin.Context) {
 	playerColor := session.GetPlayerColor(req.Player)
 	if err := session.Board.MakeMove(req.Column, playerColor); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error: "Failed to make move",
+			Error:   "Failed to make move",
 			Details: err.Error(),
 		})
 		return
@@ -230,7 +230,7 @@ func (h *GameHandler) MakeMove(c *gin.Context) {
 		// Game won
 		if err := h.gameService.CompleteGame(c.Request.Context(), gameID, winner); err != nil {
 			c.JSON(http.StatusInternalServerError, ErrorResponse{
-				Error: "Failed to complete game",
+				Error:   "Failed to complete game",
 				Details: err.Error(),
 			})
 			return
@@ -239,7 +239,7 @@ func (h *GameHandler) MakeMove(c *gin.Context) {
 		// Game is a draw
 		if err := h.gameService.CompleteGame(c.Request.Context(), gameID, nil); err != nil {
 			c.JSON(http.StatusInternalServerError, ErrorResponse{
-				Error: "Failed to complete game",
+				Error:   "Failed to complete game",
 				Details: err.Error(),
 			})
 			return
@@ -248,7 +248,7 @@ func (h *GameHandler) MakeMove(c *gin.Context) {
 		// Switch turn and update session
 		if err := h.gameService.SwitchTurn(c.Request.Context(), gameID); err != nil {
 			c.JSON(http.StatusInternalServerError, ErrorResponse{
-				Error: "Failed to switch turn",
+				Error:   "Failed to switch turn",
 				Details: err.Error(),
 			})
 			return
@@ -259,7 +259,7 @@ func (h *GameHandler) MakeMove(c *gin.Context) {
 	updatedSession, err := h.gameService.GetSession(c.Request.Context(), gameID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error: "Failed to retrieve updated game state",
+			Error:   "Failed to retrieve updated game state",
 			Details: err.Error(),
 		})
 		return

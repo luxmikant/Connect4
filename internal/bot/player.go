@@ -48,7 +48,7 @@ func NewBotPlayerService() BotPlayerService {
 // CreateBot creates a new bot player with the specified difficulty
 func (s *botPlayerService) CreateBot(difficulty Difficulty) *BotPlayer {
 	s.botCounter++
-	
+
 	difficultyName := "Medium"
 	switch difficulty {
 	case DifficultyEasy:
@@ -56,7 +56,7 @@ func (s *botPlayerService) CreateBot(difficulty Difficulty) *BotPlayer {
 	case DifficultyHard:
 		difficultyName = "Hard"
 	}
-	
+
 	return &BotPlayer{
 		ID:         fmt.Sprintf("bot_%d", s.botCounter),
 		Username:   fmt.Sprintf("%s%s_%d", BotUsernamePrefix, difficultyName, s.botCounter),
@@ -70,33 +70,33 @@ func (s *botPlayerService) GetBotMove(ctx context.Context, bot *BotPlayer, board
 	if bot == nil {
 		return -1, fmt.Errorf("bot player is nil")
 	}
-	
+
 	if bot.AI == nil {
 		return -1, fmt.Errorf("bot AI is not initialized")
 	}
-	
+
 	// Add human-like delay based on difficulty
 	delay := bot.Difficulty.HumanDelay()
-	
+
 	// Calculate timeout (must complete within 1 second total including delay)
 	timeout := DefaultBotTimeout - delay
 	if timeout < 100*time.Millisecond {
 		timeout = 100 * time.Millisecond
 	}
-	
+
 	// Create a context with timeout
 	moveCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	
+
 	// Start timing
 	start := time.Now()
-	
+
 	// Get the best move
 	move, err := bot.AI.GetBestMoveWithTimeout(moveCtx, board, color, timeout)
 	if err != nil && err != context.DeadlineExceeded {
 		return -1, fmt.Errorf("failed to get bot move: %w", err)
 	}
-	
+
 	// Calculate remaining delay time
 	elapsed := time.Since(start)
 	remainingDelay := delay - elapsed
@@ -108,7 +108,7 @@ func (s *botPlayerService) GetBotMove(ctx context.Context, bot *BotPlayer, board
 			// Delay completed
 		}
 	}
-	
+
 	// Validate the move
 	if !board.IsValidMove(move) {
 		// Fallback: find any valid move
@@ -119,7 +119,7 @@ func (s *botPlayerService) GetBotMove(ctx context.Context, bot *BotPlayer, board
 		}
 		return -1, fmt.Errorf("no valid moves available")
 	}
-	
+
 	return move, nil
 }
 

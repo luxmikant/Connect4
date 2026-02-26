@@ -39,7 +39,7 @@ func (h *LeaderboardHandler) GetLeaderboard(c *gin.Context) {
 	if err != nil || limit <= 0 {
 		limit = 10
 	}
-	
+
 	// Cap the limit to prevent excessive queries
 	if limit > 100 {
 		limit = 100
@@ -49,7 +49,7 @@ func (h *LeaderboardHandler) GetLeaderboard(c *gin.Context) {
 	leaderboard, err := h.statsRepo.GetLeaderboard(c.Request.Context(), limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error: "Failed to retrieve leaderboard",
+			Error:   "Failed to retrieve leaderboard",
 			Details: err.Error(),
 		})
 		return
@@ -89,7 +89,7 @@ func (h *LeaderboardHandler) GetPlayerStats(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error: "Failed to retrieve player statistics",
+			Error:   "Failed to retrieve player statistics",
 			Details: err.Error(),
 		})
 		return

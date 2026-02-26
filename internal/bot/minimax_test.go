@@ -161,7 +161,7 @@ func TestGetBestMoveWithTimeout_RespectsContext(t *testing.T) {
 	cancel() // Cancel immediately
 
 	move, err := bot.GetBestMoveWithTimeout(ctx, &board, models.PlayerColorRed, 1*time.Second)
-	
+
 	// Should still return a valid move (the default center)
 	assert.True(t, board.IsValidMove(move) || move == 3)
 	// Error might be context.Canceled
@@ -180,24 +180,24 @@ func TestEvaluatePosition_EmptyBoard(t *testing.T) {
 
 func TestEvaluatePosition_CenterAdvantage(t *testing.T) {
 	bot := NewMinimaxBot().(*minimaxBot)
-	
+
 	// Board with red in center
 	boardCenter := models.NewBoard()
 	boardCenter.MakeMove(3, models.PlayerColorRed)
-	
+
 	// Board with red on edge
 	boardEdge := models.NewBoard()
 	boardEdge.MakeMove(0, models.PlayerColorRed)
-	
+
 	scoreCenter := bot.EvaluatePosition(&boardCenter, models.PlayerColorRed)
 	scoreEdge := bot.EvaluatePosition(&boardEdge, models.PlayerColorRed)
-	
+
 	assert.Greater(t, scoreCenter, scoreEdge, "Center position should score higher")
 }
 
 func TestBotNeverMakesInvalidMove(t *testing.T) {
 	bot := NewMinimaxBot()
-	
+
 	// Fill column 3 completely
 	board := models.NewBoard()
 	for i := 0; i < 6; i++ {
@@ -207,7 +207,7 @@ func TestBotNeverMakesInvalidMove(t *testing.T) {
 			board.MakeMove(3, models.PlayerColorYellow)
 		}
 	}
-	
+
 	// Bot should not choose column 3
 	move := bot.GetBestMove(&board, models.PlayerColorRed, 4)
 	assert.NotEqual(t, 3, move, "Bot should not choose full column")
@@ -218,13 +218,13 @@ func TestCopyBoard(t *testing.T) {
 	original := models.NewBoard()
 	original.MakeMove(3, models.PlayerColorRed)
 	original.MakeMove(3, models.PlayerColorYellow)
-	
+
 	copied := copyBoard(&original)
-	
+
 	// Verify copy is equal
 	assert.Equal(t, original.Grid, copied.Grid)
 	assert.Equal(t, original.Height, copied.Height)
-	
+
 	// Modify copy and verify original is unchanged
 	copied.MakeMove(0, models.PlayerColorRed)
 	assert.NotEqual(t, original.Height[0], copied.Height[0])

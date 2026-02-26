@@ -72,7 +72,7 @@ func genPlayerStats() gopter.Gen {
 			return len(s) >= 3 && len(s) <= 20
 		}),
 		"GamesPlayed": gen.IntRange(0, 1000),
-		"GamesWon": gen.IntRange(0, 500),
+		"GamesWon":    gen.IntRange(0, 500),
 		"AvgGameTime": gen.IntRange(30, 3600), // 30 seconds to 1 hour
 	}).Map(func(ps models.PlayerStats) models.PlayerStats {
 		// Ensure ID is generated and GamesWon <= GamesPlayed
@@ -139,11 +139,11 @@ func TestGameDataPersistence(t *testing.T) {
 			}
 
 			// Verify data integrity after setting timestamps
-			return !player.CreatedAt.IsZero() && 
-				   !player.UpdatedAt.IsZero() &&
-				   len(player.Username) >= 3 &&
-				   len(player.Username) <= 20 &&
-				   player.ID != ""
+			return !player.CreatedAt.IsZero() &&
+				!player.UpdatedAt.IsZero() &&
+				len(player.Username) >= 3 &&
+				len(player.Username) <= 20 &&
+				player.ID != ""
 		},
 		genPlayer(),
 	))
@@ -156,7 +156,7 @@ func TestGameDataPersistence(t *testing.T) {
 
 			// Skip invalid data
 			if len(gameSession.Player1) < 3 || len(gameSession.Player1) > 20 ||
-			   len(gameSession.Player2) < 3 || len(gameSession.Player2) > 20 {
+				len(gameSession.Player2) < 3 || len(gameSession.Player2) > 20 {
 				return true
 			}
 
@@ -226,11 +226,11 @@ func TestGameDataPersistence(t *testing.T) {
 			}
 
 			return abs(stats.WinRate-expectedWinRate) < 0.0001 &&
-				   stats.GamesWon <= stats.GamesPlayed &&
-				   stats.GamesPlayed >= 0 &&
-				   stats.GamesWon >= 0 &&
-				   stats.WinRate >= 0.0 &&
-				   stats.WinRate <= 1.0
+				stats.GamesWon <= stats.GamesPlayed &&
+				stats.GamesPlayed >= 0 &&
+				stats.GamesWon >= 0 &&
+				stats.WinRate >= 0.0 &&
+				stats.WinRate <= 1.0
 		},
 		genPlayerStats(),
 	))
@@ -246,8 +246,8 @@ func TestGameDataPersistence(t *testing.T) {
 
 			// Check validation logic
 			expectedValid := move.Column >= 0 && move.Column < 7 &&
-							move.Row >= 0 && move.Row < 6 &&
-							move.Player.IsValid()
+				move.Row >= 0 && move.Row < 6 &&
+				move.Player.IsValid()
 
 			return isValid == expectedValid
 		},

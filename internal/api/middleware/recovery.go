@@ -42,11 +42,11 @@ func Recovery(config *RecoveryConfig) gin.HandlerFunc {
 					"error": "Internal server error",
 					"code":  "INTERNAL_ERROR",
 				})
-				
+
 				c.Abort()
 			}
 		}()
-		
+
 		c.Next()
 	}
 }

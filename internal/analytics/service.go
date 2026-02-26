@@ -338,9 +338,7 @@ func (s *Service) processMessage(ctx context.Context, msg *kafka.Message) error 
 			s.logger.Warn("Failed to process game started event", "error", err)
 		}
 	case models.EventMoveMade:
-		if err := s.processMoveMade(ctx, &event); err != nil {
-			s.logger.Warn("Failed to process move made event", "error", err)
-		}
+		s.processMoveMade(&event)
 	case models.EventGameCompleted:
 		if err := s.processGameCompleted(ctx, &event); err != nil {
 			s.logger.Warn("Failed to process game completed event", "error", err)
@@ -350,13 +348,9 @@ func (s *Service) processMessage(ctx context.Context, msg *kafka.Message) error 
 			s.logger.Warn("Failed to process player joined event", "error", err)
 		}
 	case models.EventPlayerLeft:
-		if err := s.processPlayerDisconnected(ctx, &event); err != nil {
-			s.logger.Warn("Failed to process player disconnected event", "error", err)
-		}
+		s.processPlayerDisconnected(&event)
 	case models.EventPlayerReconnected:
-		if err := s.processPlayerReconnected(ctx, &event); err != nil {
-			s.logger.Warn("Failed to process player reconnected event", "error", err)
-		}
+		s.processPlayerReconnected(&event)
 	}
 
 	s.logger.Debug("Event processed successfully",
@@ -410,7 +404,7 @@ func (s *Service) updateMetrics(event *models.GameEvent) {
 
 // processGameStarted handles game started events
 //
-//nolint:unparam
+//nolint:unparam // processGameStarted always returns nil but satisfies the uniform event-handler signature
 func (s *Service) processGameStarted(ctx context.Context, event *models.GameEvent) error {
 	player1, _ := event.Metadata["player1"].(string)
 	player2, _ := event.Metadata["player2"].(string)
@@ -435,7 +429,7 @@ func (s *Service) processGameStarted(ctx context.Context, event *models.GameEven
 }
 
 // processMoveMade handles move made events (Requirement 10.2 - timing data)
-func (s *Service) processMoveMade(_ context.Context, event *models.GameEvent) error {
+func (s *Service) processMoveMade(event *models.GameEvent) {
 	column, _ := event.Metadata["column"].(float64)
 	row, _ := event.Metadata["row"].(float64)
 	moveNumber, _ := event.Metadata["moveNumber"].(float64)
@@ -447,8 +441,6 @@ func (s *Service) processMoveMade(_ context.Context, event *models.GameEvent) er
 		"row", int(row),
 		"moveNumber", int(moveNumber),
 	)
-
-	return nil
 }
 
 // processGameCompleted handles game completion events (Requirement 10.2, 10.3)
@@ -491,21 +483,19 @@ func (s *Service) processPlayerJoined(ctx context.Context, event *models.GameEve
 }
 
 // processPlayerDisconnected handles player disconnected events
-func (s *Service) processPlayerDisconnected(_ context.Context, event *models.GameEvent) error {
+func (s *Service) processPlayerDisconnected(event *models.GameEvent) {
 	s.logger.Info("Player disconnected",
 		"gameID", event.GameID,
 		"player", event.PlayerID,
 	)
-	return nil
 }
 
 // processPlayerReconnected handles player reconnected events
-func (s *Service) processPlayerReconnected(_ context.Context, event *models.GameEvent) error {
+func (s *Service) processPlayerReconnected(event *models.GameEvent) {
 	s.logger.Info("Player reconnected",
 		"gameID", event.GameID,
 		"player", event.PlayerID,
 	)
-	return nil
 }
 
 // ensurePlayerStats ensures a player stats record exists

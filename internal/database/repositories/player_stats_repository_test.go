@@ -69,7 +69,7 @@ func (suite *PlayerStatsRepositoryTestSuite) TestCreate_Success() {
 
 func (suite *PlayerStatsRepositoryTestSuite) TestGetByUsername_Success() {
 	ctx := context.Background()
-	
+
 	// Create test stats
 	stats := &models.PlayerStats{
 		ID:          "test-stats-2",
@@ -93,7 +93,7 @@ func (suite *PlayerStatsRepositoryTestSuite) TestGetByUsername_Success() {
 
 func (suite *PlayerStatsRepositoryTestSuite) TestGetByUsername_NotFound() {
 	ctx := context.Background()
-	
+
 	retrieved, err := suite.repo.GetByUsername(ctx, "non-existent-user")
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), retrieved)
@@ -102,7 +102,7 @@ func (suite *PlayerStatsRepositoryTestSuite) TestGetByUsername_NotFound() {
 
 func (suite *PlayerStatsRepositoryTestSuite) TestUpdate_Success() {
 	ctx := context.Background()
-	
+
 	// Create test stats
 	stats := &models.PlayerStats{
 		ID:          "test-stats-3",
@@ -134,7 +134,7 @@ func (suite *PlayerStatsRepositoryTestSuite) TestUpdate_Success() {
 
 func (suite *PlayerStatsRepositoryTestSuite) TestGetLeaderboard_Success() {
 	ctx := context.Background()
-	
+
 	// Create multiple test stats with different win counts
 	statsData := []*models.PlayerStats{
 		{
@@ -184,7 +184,7 @@ func (suite *PlayerStatsRepositoryTestSuite) TestGetLeaderboard_Success() {
 
 func (suite *PlayerStatsRepositoryTestSuite) TestUpdateGameStats_NewPlayer() {
 	ctx := context.Background()
-	
+
 	// Update stats for a new player (should create new record)
 	err := suite.repo.UpdateGameStats(ctx, "newplayer", true, 300)
 	assert.NoError(suite.T(), err)
@@ -201,7 +201,7 @@ func (suite *PlayerStatsRepositoryTestSuite) TestUpdateGameStats_NewPlayer() {
 
 func (suite *PlayerStatsRepositoryTestSuite) TestUpdateGameStats_ExistingPlayer() {
 	ctx := context.Background()
-	
+
 	// Create existing player stats
 	stats := &models.PlayerStats{
 		ID:          "test-stats-7",
@@ -232,7 +232,7 @@ func (suite *PlayerStatsRepositoryTestSuite) TestUpdateGameStats_ExistingPlayer(
 
 func (suite *PlayerStatsRepositoryTestSuite) TestUpdateGameStats_EmptyUsername() {
 	ctx := context.Background()
-	
+
 	err := suite.repo.UpdateGameStats(ctx, "", true, 300)
 	assert.Error(suite.T(), err)
 	assert.Contains(suite.T(), err.Error(), "username cannot be empty")

@@ -46,9 +46,9 @@ type playerStatsService struct {
 	logger    *slog.Logger
 
 	// In-memory cache for player stats
-	statsCache     map[string]*cachedStats
-	statsCacheMu   sync.RWMutex
-	statsCacheTTL  time.Duration
+	statsCache    map[string]*cachedStats
+	statsCacheMu  sync.RWMutex
+	statsCacheTTL time.Duration
 
 	// Leaderboard cache
 	leaderboardCache    []*models.PlayerStats
@@ -107,7 +107,6 @@ func NewPlayerStatsService(
 		subscriptions:       make(map[string]LeaderboardUpdateCallback),
 	}
 }
-
 
 // GetPlayerStats retrieves statistics for a specific player
 func (s *playerStatsService) GetPlayerStats(ctx context.Context, username string) (*models.PlayerStats, error) {
@@ -284,7 +283,6 @@ func (s *playerStatsService) GetOrCreatePlayerStats(ctx context.Context, usernam
 	return nil, err
 }
 
-
 // SubscribeToLeaderboardUpdates registers a callback for leaderboard updates
 func (s *playerStatsService) SubscribeToLeaderboardUpdates(callback LeaderboardUpdateCallback) string {
 	s.subscriptionsMu.Lock()
@@ -387,10 +385,10 @@ func (s *playerStatsService) GetCacheStats() map[string]interface{} {
 	s.subscriptionsMu.RUnlock()
 
 	return map[string]interface{}{
-		"stats_cache_size":      statsCacheSize,
-		"leaderboard_cached":    leaderboardCached,
-		"leaderboard_age_ms":    leaderboardAge.Milliseconds(),
-		"subscription_count":    subscriptionCount,
+		"stats_cache_size":   statsCacheSize,
+		"leaderboard_cached": leaderboardCached,
+		"leaderboard_age_ms": leaderboardAge.Milliseconds(),
+		"subscription_count": subscriptionCount,
 	}
 }
 

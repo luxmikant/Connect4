@@ -58,7 +58,7 @@ func (suite *ManagerTestSuite) TestNewManager_Success() {
 
 func (suite *ManagerTestSuite) TestHealthCheck_Success() {
 	ctx := context.Background()
-	
+
 	err := suite.manager.HealthCheck(ctx)
 	assert.NoError(suite.T(), err)
 }
@@ -67,7 +67,7 @@ func (suite *ManagerTestSuite) TestGetConnectionStats_Success() {
 	stats, err := suite.manager.GetConnectionStats()
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), stats)
-	
+
 	// Verify expected fields are present
 	expectedFields := []string{
 		"max_open_connections",
@@ -80,7 +80,7 @@ func (suite *ManagerTestSuite) TestGetConnectionStats_Success() {
 		"max_idle_time_closed",
 		"max_lifetime_closed",
 	}
-	
+
 	for _, field := range expectedFields {
 		assert.Contains(suite.T(), stats, field)
 	}
@@ -88,7 +88,7 @@ func (suite *ManagerTestSuite) TestGetConnectionStats_Success() {
 
 func (suite *ManagerTestSuite) TestWithTransaction_Success() {
 	ctx := context.Background()
-	
+
 	// Test successful transaction
 	err := suite.manager.WithTransaction(ctx, func(tx *gorm.DB) error {
 		// Create a player within transaction
@@ -98,9 +98,9 @@ func (suite *ManagerTestSuite) TestWithTransaction_Success() {
 		}
 		return tx.Create(player).Error
 	})
-	
+
 	assert.NoError(suite.T(), err)
-	
+
 	// Verify player was created
 	var player models.Player
 	err = suite.db.First(&player, "id = ?", "test-tx-player").Error
@@ -110,7 +110,7 @@ func (suite *ManagerTestSuite) TestWithTransaction_Success() {
 
 func (suite *ManagerTestSuite) TestWithTransaction_Rollback() {
 	ctx := context.Background()
-	
+
 	// Test transaction rollback on error
 	err := suite.manager.WithTransaction(ctx, func(tx *gorm.DB) error {
 		// Create a player within transaction
@@ -121,13 +121,13 @@ func (suite *ManagerTestSuite) TestWithTransaction_Rollback() {
 		if err := tx.Create(player).Error; err != nil {
 			return err
 		}
-		
+
 		// Force an error to trigger rollback
 		return assert.AnError
 	})
-	
+
 	assert.Error(suite.T(), err)
-	
+
 	// Verify player was NOT created (transaction rolled back)
 	var player models.Player
 	err = suite.db.First(&player, "id = ?", "test-rollback-player").Error
@@ -137,11 +137,11 @@ func (suite *ManagerTestSuite) TestWithTransaction_Rollback() {
 
 func (suite *ManagerTestSuite) TestBeginTransaction_Success() {
 	ctx := context.Background()
-	
+
 	tx, err := suite.manager.BeginTransaction(ctx)
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), tx)
-	
+
 	// Test that we can use the transaction
 	player := &models.Player{
 		ID:       "test-manual-tx-player",
@@ -149,11 +149,11 @@ func (suite *ManagerTestSuite) TestBeginTransaction_Success() {
 	}
 	err = tx.Create(player).Error
 	assert.NoError(suite.T(), err)
-	
+
 	// Commit the transaction
 	err = tx.Commit().Error
 	assert.NoError(suite.T(), err)
-	
+
 	// Verify player was created
 	var retrieved models.Player
 	err = suite.db.First(&retrieved, "id = ?", "test-manual-tx-player").Error
@@ -163,9 +163,9 @@ func (suite *ManagerTestSuite) TestBeginTransaction_Success() {
 
 func (suite *ManagerTestSuite) TestRepositoryIntegration() {
 	ctx := context.Background()
-	
+
 	// Test that all repositories work together
-	
+
 	// 1. Create a player
 	player := &models.Player{
 		ID:       "integration-player",
@@ -173,7 +173,7 @@ func (suite *ManagerTestSuite) TestRepositoryIntegration() {
 	}
 	err := suite.manager.Player.Create(ctx, player)
 	assert.NoError(suite.T(), err)
-	
+
 	// 2. Create player stats
 	stats := &models.PlayerStats{
 		ID:          "integration-stats",
@@ -184,7 +184,7 @@ func (suite *ManagerTestSuite) TestRepositoryIntegration() {
 	}
 	err = suite.manager.PlayerStats.Create(ctx, stats)
 	assert.NoError(suite.T(), err)
-	
+
 	// 3. Create a game session
 	gameSession := &models.GameSession{
 		ID:          "integration-game",
@@ -196,7 +196,7 @@ func (suite *ManagerTestSuite) TestRepositoryIntegration() {
 	}
 	err = suite.manager.GameSession.Create(ctx, gameSession)
 	assert.NoError(suite.T(), err)
-	
+
 	// 4. Create a move
 	move := &models.Move{
 		ID:     "integration-move",
@@ -207,7 +207,7 @@ func (suite *ManagerTestSuite) TestRepositoryIntegration() {
 	}
 	err = suite.manager.Move.Create(ctx, move)
 	assert.NoError(suite.T(), err)
-	
+
 	// 5. Create a game event
 	event := &models.GameEvent{
 		ID:        "integration-event",
@@ -217,16 +217,16 @@ func (suite *ManagerTestSuite) TestRepositoryIntegration() {
 	}
 	err = suite.manager.GameEvent.Create(ctx, event)
 	assert.NoError(suite.T(), err)
-	
+
 	// Verify all data was created correctly
 	retrievedPlayer, err := suite.manager.Player.GetByID(ctx, "integration-player")
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "integrationuser", retrievedPlayer.Username)
-	
+
 	retrievedGame, err := suite.manager.GameSession.GetByID(ctx, "integration-game")
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "integrationuser", retrievedGame.Player1)
-	
+
 	retrievedMove, err := suite.manager.Move.GetByID(ctx, "integration-move")
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "integration-game", retrievedMove.GameID)

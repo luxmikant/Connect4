@@ -68,7 +68,7 @@ func (c *TestClient) readMessages() {
 		}
 		c.mu.Unlock()
 	}()
-	
+
 	for {
 		c.mu.RLock()
 		if c.closed {
@@ -79,13 +79,13 @@ func (c *TestClient) readMessages() {
 
 		// Set read deadline for each message
 		c.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-		
+
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			// Connection closed or error occurred
 			return
 		}
-		
+
 		select {
 		case c.messages <- message:
 		case <-c.done:
@@ -99,16 +99,16 @@ func (c *TestClient) readMessages() {
 func (c *TestClient) SendMessage(msg *wspackage.Message) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	if c.closed {
 		return fmt.Errorf("client is closed")
 	}
-	
+
 	data, err := msg.ToJSON()
 	if err != nil {
 		return err
 	}
-	
+
 	// Set write deadline
 	c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	return c.conn.WriteMessage(websocket.TextMessage, data)
@@ -144,7 +144,7 @@ func (c *TestClient) WaitForMessage(timeout time.Duration, msgType wspackage.Mes
 func (c *TestClient) Close() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if !c.closed {
 		c.closed = true
 		close(c.done)
@@ -221,7 +221,7 @@ func TestRealTimeGameStateSynchronization(t *testing.T) {
 
 			// Extract game ID from the game started message
 			gameID, ok := gameStartedMsg.Payload["gameId"].(string)
-			
+
 			if !ok || gameID == "" {
 				return false
 			}
@@ -317,7 +317,7 @@ func TestRealTimeGameStateSynchronization(t *testing.T) {
 				"username": game1Player1,
 				"gameType": "bot",
 			})
-			
+
 			joinMsg2 := wspackage.NewMessage(wspackage.MessageTypeJoinGame, map[string]interface{}{
 				"username": game2Player1,
 				"gameType": "bot",
@@ -344,7 +344,7 @@ func TestRealTimeGameStateSynchronization(t *testing.T) {
 
 			gameID1, ok1 := gameStartedMsg1.Payload["gameId"].(string)
 			gameID2, ok2 := gameStartedMsg2.Payload["gameId"].(string)
-			
+
 			if !ok1 || !ok2 || gameID1 == "" || gameID2 == "" {
 				return false
 			}

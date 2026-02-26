@@ -200,7 +200,7 @@ func (suite *GameHandlerIntegrationTestSuite) TestMakeMove() {
 	var response models.GameSession
 	err = json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), models.PlayerColorYellow, response.CurrentTurn) // Turn switched to bob
+	assert.Equal(suite.T(), models.PlayerColorYellow, response.CurrentTurn)   // Turn switched to bob
 	assert.Equal(suite.T(), models.PlayerColorRed, response.Board.Grid[0][3]) // Move was made
 }
 

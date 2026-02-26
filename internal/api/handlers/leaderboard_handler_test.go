@@ -188,11 +188,11 @@ func (suite *LeaderboardHandlerIntegrationTestSuite) createTestPlayerStats() {
 		gamesPlayed int
 		gamesWon    int
 	}{
-		{"alice", 10, 8},   // 80% win rate
-		{"bob", 15, 9},     // 60% win rate
-		{"charlie", 8, 6},  // 75% win rate
-		{"diana", 12, 4},   // 33% win rate
-		{"eve", 20, 15},    // 75% win rate
+		{"alice", 10, 8},  // 80% win rate
+		{"bob", 15, 9},    // 60% win rate
+		{"charlie", 8, 6}, // 75% win rate
+		{"diana", 12, 4},  // 33% win rate
+		{"eve", 20, 15},   // 75% win rate
 	}
 
 	for _, player := range players {

@@ -89,6 +89,7 @@ issues:
         - dupl
         - gosec
         - unparam
+        - lll
     # cmd/ entry points: relax complexity
     - path: cmd/
       linters:
