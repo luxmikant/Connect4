@@ -109,7 +109,7 @@ func (r *ResilientDB) retryLoop() {
 			log.Printf("🔄 Retrying database connection (backoff: %v)...", backoff)
 			if err := r.connect(); err != nil {
 				log.Printf("⚠️  Retry failed: %v", err)
-				backoff = backoff * 2
+				backoff *= 2
 				if backoff > maxBackoff {
 					backoff = maxBackoff
 				}

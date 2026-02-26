@@ -158,7 +158,7 @@ func main() {
 		routes.SetupRoutes(router, cfg, gameHandler, leaderboardHandler, authHandler, wsService.GetWebSocketHandler(), supabaseAuth)
 	} else {
 		// Minimal routes when DB is unavailable
-		setupMinimalRoutes(router, cfg, resilientDB)
+		setupMinimalRoutes(router, resilientDB)
 		log.Println("⚠️  Server started with minimal routes — game endpoints unavailable until DB connects")
 
 		// Watch for DB reconnection and set up full routes
@@ -217,7 +217,7 @@ func main() {
 	}
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		log.Printf("Server forced to shutdown: %v", err)
 	}
 
 	log.Println("Server exited")
@@ -225,7 +225,7 @@ func main() {
 
 // setupMinimalRoutes registers only health/status routes when the database is unavailable.
 // This keeps the server responsive to Render's health checks so it doesn't get killed.
-func setupMinimalRoutes(router *gin.Engine, cfg *config.Config, rdb *database.ResilientDB) {
+func setupMinimalRoutes(router *gin.Engine, rdb *database.ResilientDB) {
 	// Setup middleware even in minimal mode
 	corsConfig := gin.HandlerFunc(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")

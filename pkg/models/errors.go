@@ -4,15 +4,15 @@ import "errors"
 
 // Common errors used across the application
 var (
-	ErrInvalidMove      = errors.New("invalid move")
-	ErrGameNotFound     = errors.New("game not found")
-	ErrPlayerNotFound   = errors.New("player not found")
-	ErrMoveNotFound     = errors.New("move not found")
-	ErrGameFull         = errors.New("game is full")
-	ErrNotPlayerTurn    = errors.New("not player's turn")
-	ErrGameEnded        = errors.New("game has ended")
-	ErrInvalidBoardData = errors.New("invalid board data")
-	ErrInvalidEventData = errors.New("invalid event data")
+	ErrInvalidMove       = errors.New("invalid move")
+	ErrGameNotFound      = errors.New("game not found")
+	ErrPlayerNotFound    = errors.New("player not found")
+	ErrMoveNotFound      = errors.New("move not found")
+	ErrGameFull          = errors.New("game is full")
+	ErrNotPlayerTurn     = errors.New("not player's turn")
+	ErrGameEnded         = errors.New("game has ended")
+	ErrInvalidBoardData  = errors.New("invalid board data")
+	ErrInvalidEventData  = errors.New("invalid event data")
 	ErrDuplicateUsername = errors.New("username already exists in active session")
 )
 

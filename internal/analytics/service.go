@@ -86,7 +86,6 @@ type Service struct {
 	// Processing state
 	eventsProcessed atomic.Int64
 	eventsFailed    atomic.Int64
-	lastCommitTime  time.Time
 
 	// Shutdown coordination
 	shutdownCh   chan struct{}
@@ -410,6 +409,8 @@ func (s *Service) updateMetrics(event *models.GameEvent) {
 }
 
 // processGameStarted handles game started events
+//
+//nolint:unparam
 func (s *Service) processGameStarted(ctx context.Context, event *models.GameEvent) error {
 	player1, _ := event.Metadata["player1"].(string)
 	player2, _ := event.Metadata["player2"].(string)
@@ -434,7 +435,7 @@ func (s *Service) processGameStarted(ctx context.Context, event *models.GameEven
 }
 
 // processMoveMade handles move made events (Requirement 10.2 - timing data)
-func (s *Service) processMoveMade(ctx context.Context, event *models.GameEvent) error {
+func (s *Service) processMoveMade(_ context.Context, event *models.GameEvent) error {
 	column, _ := event.Metadata["column"].(float64)
 	row, _ := event.Metadata["row"].(float64)
 	moveNumber, _ := event.Metadata["moveNumber"].(float64)
@@ -490,7 +491,7 @@ func (s *Service) processPlayerJoined(ctx context.Context, event *models.GameEve
 }
 
 // processPlayerDisconnected handles player disconnected events
-func (s *Service) processPlayerDisconnected(ctx context.Context, event *models.GameEvent) error {
+func (s *Service) processPlayerDisconnected(_ context.Context, event *models.GameEvent) error {
 	s.logger.Info("Player disconnected",
 		"gameID", event.GameID,
 		"player", event.PlayerID,
@@ -499,7 +500,7 @@ func (s *Service) processPlayerDisconnected(ctx context.Context, event *models.G
 }
 
 // processPlayerReconnected handles player reconnected events
-func (s *Service) processPlayerReconnected(ctx context.Context, event *models.GameEvent) error {
+func (s *Service) processPlayerReconnected(_ context.Context, event *models.GameEvent) error {
 	s.logger.Info("Player reconnected",
 		"gameID", event.GameID,
 		"player", event.PlayerID,

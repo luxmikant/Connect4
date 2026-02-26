@@ -97,25 +97,25 @@ func Load() (*Config, error) {
 
 	_ = viper.BindEnv("kafka.bootstrap_servers", "KAFKA_BOOTSTRAP_SERVERS")
 	_ = viper.BindEnv("kafka.api_key", "KAFKA_API_KEY")
-	viper.BindEnv("kafka.api_secret", "KAFKA_API_SECRET")
-	viper.BindEnv("kafka.topic", "KAFKA_TOPIC")
-	viper.BindEnv("kafka.consumer_group", "KAFKA_CONSUMER_GROUP")
+	_ = viper.BindEnv("kafka.api_secret", "KAFKA_API_SECRET")
+	_ = viper.BindEnv("kafka.topic", "KAFKA_TOPIC")
+	_ = viper.BindEnv("kafka.consumer_group", "KAFKA_CONSUMER_GROUP")
 
-	viper.BindEnv("redis.url", "REDIS_URL")
-	viper.BindEnv("redis.password", "REDIS_PASSWORD")
-	viper.BindEnv("redis.db", "REDIS_DB")
+	_ = viper.BindEnv("redis.url", "REDIS_URL")
+	_ = viper.BindEnv("redis.password", "REDIS_PASSWORD")
+	_ = viper.BindEnv("redis.db", "REDIS_DB")
 
-	viper.BindEnv("supabase.url", "SUPABASE_URL")
-	viper.BindEnv("supabase.service_key", "SUPABASE_SERVICE_KEY")
-	viper.BindEnv("supabase.anon_key", "SUPABASE_ANON_KEY")
+	_ = viper.BindEnv("supabase.url", "SUPABASE_URL")
+	_ = viper.BindEnv("supabase.service_key", "SUPABASE_SERVICE_KEY")
+	_ = viper.BindEnv("supabase.anon_key", "SUPABASE_ANON_KEY")
 
-	viper.BindEnv("server.port", "SERVER_PORT")
-	viper.BindEnv("server.host", "SERVER_HOST")
-	viper.BindEnv("server.cors_origins", "SERVER_CORS_ORIGINS")
-	viper.BindEnv("server.read_timeout", "SERVER_READ_TIMEOUT")
-	viper.BindEnv("server.write_timeout", "SERVER_WRITE_TIMEOUT")
+	_ = viper.BindEnv("server.port", "SERVER_PORT")
+	_ = viper.BindEnv("server.host", "SERVER_HOST")
+	_ = viper.BindEnv("server.cors_origins", "SERVER_CORS_ORIGINS")
+	_ = viper.BindEnv("server.read_timeout", "SERVER_READ_TIMEOUT")
+	_ = viper.BindEnv("server.write_timeout", "SERVER_WRITE_TIMEOUT")
 
-	viper.BindEnv("environment", "ENVIRONMENT")
+	_ = viper.BindEnv("environment", "ENVIRONMENT")
 
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {

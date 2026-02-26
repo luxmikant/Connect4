@@ -14,6 +14,9 @@ const (
 	DifficultyEasy   Difficulty = 1
 	DifficultyMedium Difficulty = 2
 	DifficultyHard   Difficulty = 3
+
+	// difficultyMediumStr is the string name for medium difficulty.
+	difficultyMediumStr = "Medium"
 )
 
 // SearchDepth returns the search depth for a given difficulty
@@ -50,11 +53,11 @@ func (d Difficulty) String() string {
 	case DifficultyEasy:
 		return "Easy"
 	case DifficultyMedium:
-		return "Medium"
+		return difficultyMediumStr
 	case DifficultyHard:
 		return "Hard"
 	default:
-		return "Medium"
+		return difficultyMediumStr
 	}
 }
 

@@ -707,14 +707,8 @@ func (h *GameMessageHandler) handleJoinGame(ctx context.Context, conn *Connectio
 	var session *models.GameSession
 	var err error
 
-	if gameType == "bot" {
-		// Create game with bot
-		session, err = h.gameService.CreateSession(ctx, username, "Bot")
-	} else {
-		// For PvP, we'll need matchmaking (Task 8)
-		// For now, create a bot game as fallback
-		session, err = h.gameService.CreateSession(ctx, username, "Bot")
-	}
+	// Create game session (bot or fallback bot for PvP until matchmaking is implemented)
+	session, err = h.gameService.CreateSession(ctx, username, "Bot")
 
 	if err != nil {
 		return fmt.Errorf("failed to create game session: %w", err)
@@ -873,13 +867,10 @@ func (h *GameMessageHandler) handleMakeMove(ctx context.Context, conn *Connectio
 		}
 
 		h.hub.BroadcastToGame(gameID, endData, "")
-	} else {
-		// If game is still in progress and it's now the bot's turn, make bot move
-		if h.isBot(updatedSession.Player1) || h.isBot(updatedSession.Player2) {
-			currentPlayer := updatedSession.GetCurrentPlayer()
-			if h.isBot(currentPlayer) {
-				go h.makeBotMove(ctx, gameID)
-			}
+	} else if h.isBot(updatedSession.Player1) || h.isBot(updatedSession.Player2) {
+		currentPlayer := updatedSession.GetCurrentPlayer()
+		if h.isBot(currentPlayer) {
+			go h.makeBotMove(ctx, gameID)
 		}
 	}
 

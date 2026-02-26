@@ -12,11 +12,11 @@ import (
 type EventType string
 
 const (
-	EventGameStarted    EventType = "game_started"
-	EventMoveMade       EventType = "move_made"
-	EventGameCompleted  EventType = "game_completed"
-	EventPlayerJoined   EventType = "player_joined"
-	EventPlayerLeft     EventType = "player_left"
+	EventGameStarted       EventType = "game_started"
+	EventMoveMade          EventType = "move_made"
+	EventGameCompleted     EventType = "game_completed"
+	EventPlayerJoined      EventType = "player_joined"
+	EventPlayerLeft        EventType = "player_left"
 	EventPlayerReconnected EventType = "player_reconnected"
 )
 
@@ -29,12 +29,12 @@ func (em *EventMetadata) Scan(value interface{}) error {
 		*em = make(EventMetadata)
 		return nil
 	}
-	
+
 	bytes, ok := value.([]byte)
 	if !ok {
 		return ErrInvalidEventData
 	}
-	
+
 	return json.Unmarshal(bytes, em)
 }
 

@@ -501,17 +501,3 @@ func copyBoard(board *models.Board) *models.Board {
 	}
 	return newBoard
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

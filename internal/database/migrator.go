@@ -117,15 +117,3 @@ func (m *Migrator) Down() error {
 
 	return nil
 }
-
-// createIndexes creates additional database indexes for better performance
-// Note: Most indexes are now created via SQL migration files
-func (m *Migrator) createIndexes() error {
-	// This method is kept for any additional indexes that might be needed
-	// beyond what's defined in the SQL migration files
-
-	// Example: Create any additional composite indexes if needed
-	// Most indexes are now handled in the SQL migration files
-
-	return nil
-}

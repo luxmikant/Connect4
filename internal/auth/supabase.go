@@ -43,7 +43,7 @@ func NewSupabaseAuth(url, serviceKey string) *SupabaseAuth {
 
 // VerifyToken verifies a Supabase JWT token and returns the user
 func (s *SupabaseAuth) VerifyToken(ctx context.Context, token string) (*User, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", s.url+"/auth/v1/user", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.url+"/auth/v1/user", http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -74,7 +74,7 @@ func (s *SupabaseAuth) VerifyToken(ctx context.Context, token string) (*User, er
 func (s *SupabaseAuth) GetProfile(ctx context.Context, userID string) (*Profile, error) {
 	url := fmt.Sprintf("%s/rest/v1/profiles?id=eq.%s&select=*", s.url, userID)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

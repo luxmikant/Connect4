@@ -32,7 +32,7 @@ func (m *Move) BeforeCreate(tx *gorm.DB) error {
 
 // IsValid validates the move
 func (m *Move) IsValid() bool {
-	return m.Column >= 0 && m.Column < 7 && 
-		   m.Row >= 0 && m.Row < 6 &&
-		   m.Player.IsValid()
+	return m.Column >= 0 && m.Column < 7 &&
+		m.Row >= 0 && m.Row < 6 &&
+		m.Player.IsValid()
 }

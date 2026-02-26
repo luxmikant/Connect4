@@ -87,33 +87,26 @@ func setupAPIRoutes(
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
-	{
-		// Authentication endpoints
-		authGroup := v1.Group("/auth")
-		authGroup.Use(middleware.SupabaseAuthMiddleware(supabaseAuth))
-		{
-			authGroup.GET("/me", authHandler.GetMe)
-			authGroup.PUT("/profile", authHandler.UpdateProfile)
-			authGroup.POST("/player", authHandler.GetOrCreatePlayer)
-		}
 
-		// Game management endpoints
-		games := v1.Group("/games")
-		{
-			games.POST("", gameHandler.CreateGame)
-			games.GET("/:id", gameHandler.GetGameState)
-			games.POST("/:id/moves", gameHandler.MakeMove)
-		}
+	// Authentication endpoints
+	authGroup := v1.Group("/auth")
+	authGroup.Use(middleware.SupabaseAuthMiddleware(supabaseAuth))
+	authGroup.GET("/me", authHandler.GetMe)
+	authGroup.PUT("/profile", authHandler.UpdateProfile)
+	authGroup.POST("/player", authHandler.GetOrCreatePlayer)
 
-		// Leaderboard endpoints
-		v1.GET("/leaderboard", leaderboardHandler.GetLeaderboard)
+	// Game management endpoints
+	games := v1.Group("/games")
+	games.POST("", gameHandler.CreateGame)
+	games.GET("/:id", gameHandler.GetGameState)
+	games.POST("/:id/moves", gameHandler.MakeMove)
 
-		// Player statistics endpoints
-		players := v1.Group("/players")
-		{
-			players.GET("/:id/stats", leaderboardHandler.GetPlayerStats)
-		}
-	}
+	// Leaderboard endpoints
+	v1.GET("/leaderboard", leaderboardHandler.GetLeaderboard)
+
+	// Player statistics endpoints
+	players := v1.Group("/players")
+	players.GET("/:id/stats", leaderboardHandler.GetPlayerStats)
 }
 
 // setupDocumentation configures Swagger documentation
