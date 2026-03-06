@@ -2,6 +2,39 @@
 
 A real-time multiplayer Connect 4 game system built with Go backend, React frontend, and Kafka-based analytics pipeline.
 
+## 💡 The Most Interesting Thing I've Built & Key Technical Decisions
+
+Connect 4 Multiplayer is the most technically interesting project I've built. What started as a simple game quickly became an exercise in distributed systems, real-time communication, and AI — all at once.
+
+### Why It's Interesting
+
+Most tutorials show you how to build a chat app *or* a game *or* an analytics pipeline. This project combines all three in a coherent system: real-time multiplayer gameplay (WebSocket), an AI opponent (minimax with alpha-beta pruning), and a streaming analytics pipeline (Kafka) — deployed as a full-stack application with a React frontend.
+
+### Key Technical Decisions
+
+#### 1. Go for the Backend — Concurrency First
+I chose Go specifically for its goroutine model. Each WebSocket connection runs in its own goroutine, and the hub uses `sync.RWMutex` to protect shared state. This made handling hundreds of simultaneous games natural, with no callback hell or async/await chains.
+
+#### 2. Single WebSocket Hub with Room Tracking
+Rather than managing connections per-game, I built a central `Hub` that maps `gameID → []Connection`. This made broadcasting moves to both players simple (`BroadcastToGame(gameID, msg)`), and it laid the groundwork for spectator support. The tradeoff: this approach doesn't scale horizontally — a future improvement would be Redis Pub/Sub for multi-instance deployments.
+
+#### 3. Minimax with Alpha-Beta Pruning & Iterative Deepening
+The bot needed to feel responsive (< 500 ms) while still playing intelligently. I implemented iterative deepening — searching depth 1, then 2, …, up to 7 — and stopping when a deadline expires. Alpha-beta pruning reduces the search tree by ~90%, and center-first move ordering (columns `[3,2,4,1,5,0,6]`) improves pruning further. The evaluation function rewards 3-in-a-row patterns (+100), center control (+3 per piece), and immediately wins/blocks.
+
+#### 4. In-Memory Cache Over Redis
+For the single-server deployment on Render's free tier, adding Redis would have meant another managed service. Instead, game sessions are cached in a `map[string]*cachedSession` protected by a mutex. Zero network latency, simpler deployment. The code is designed so Redis can be dropped in later by swapping the cache layer behind an interface.
+
+#### 5. Kafka for Async Analytics
+Game events (start, move, end) are published to Kafka topics and consumed by a separate analytics service that aggregates metrics into PostgreSQL. Decoupling analytics from the game loop means a slow analytics write never delays a player's move. In development, local Docker Kafka is used; in production, Confluent Cloud.
+
+#### 6. Dual Validation (Client + Server)
+The frontend disables columns that are full and prevents moves when it's not the player's turn — for instant UX feedback. The backend re-validates every move as the authoritative source of truth, preventing any client-side manipulation. The duplication is worth it: good feel *and* correctness.
+
+#### 7. 30-Second Reconnection Grace Period
+Disconnections in real-time games are frustrating. When a player's WebSocket closes, the server marks them disconnected but keeps the game alive for 30 seconds. If they reconnect (new WebSocket + `reconnect` message with their `gameID`), they receive the current board state and resume seamlessly. After 30 seconds, the game is abandoned.
+
+---
+
 ## ✨ Key Highlights
 
 🎮 **Real-Time Multiplayer** - Play live games via WebSocket with instant move synchronization  
