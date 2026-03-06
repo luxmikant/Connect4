@@ -301,6 +301,10 @@ make test-coverage
 open coverage.html
 ```
 
+## Project Narrative
+
+For a detailed walkthrough of the most interesting technical decisions made while building this system—WebSocket architecture, minimax AI, Kafka analytics, and reconnection handling—see **[TECHNICAL_NARRATIVE.md](TECHNICAL_NARRATIVE.md)**.
+
 ## Contributing
 
 1. Fork the repository
